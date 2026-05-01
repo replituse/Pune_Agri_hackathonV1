@@ -11,7 +11,12 @@ import {
 } from "../lib/document-types";
 import { getDb } from "../lib/mongo";
 import { logger } from "../lib/logger";
-import { mapExtractionToSection, pickAadhaarPortrait } from "../lib/profiles";
+import {
+  mapExtractionToSection,
+  pickAadhaarPortrait,
+  extractTablesFromMarkerJson,
+  extractTextBlocksFromMarkerJson,
+} from "../lib/profiles";
 
 const router: IRouter = Router();
 
@@ -501,6 +506,9 @@ router.get("/extract/:requestId", async (req, res): Promise<void> => {
       ? pickAadhaarPortrait(marker)
       : null;
 
+  const rawTables = marker?.json ? extractTablesFromMarkerJson(marker.json) : [];
+  const textBlocks = marker?.json ? extractTextBlocksFromMarkerJson(marker.json) : [];
+
   res.json({
     status: "complete",
     document_type: docDef.id,
@@ -511,6 +519,8 @@ router.get("/extract/:requestId", async (req, res): Promise<void> => {
       ? { sections: structured.sections, empty: structured.empty }
       : null,
     marker,
+    raw_tables: rawTables,
+    text_blocks: textBlocks,
     aadhar_photo: aadharPhoto,
     profile: meta.profilePhone
       ? {

@@ -82,6 +82,13 @@ interface TableData {
   rows: { values: Record<string, string> }[];
 }
 
+interface RawTable {
+  blockId?: string;
+  headers: string[];
+  rows: string[][];
+  html: string;
+}
+
 interface SectionData {
   title: string;
   fields: FieldRow[];
@@ -94,6 +101,8 @@ interface ExtractionState {
   requestId: string | null;
   sections: SectionData[];
   images: Record<string, string> | null;
+  rawTables: RawTable[];
+  textBlocks: string[];
   /** Server-picked portrait photo (base64 + mimeType). Only set for Aadhaar. */
   aadharPhoto: { base64: string; mimeType: string } | null;
   error: string | null;
@@ -105,6 +114,8 @@ const DEFAULT_STATE: ExtractionState = {
   requestId: null,
   sections: [],
   images: null,
+  rawTables: [],
+  textBlocks: [],
   aadharPhoto: null,
   error: null,
 };
@@ -218,6 +229,8 @@ async function pollUntilDone(
           requestId,
           sections: data.structured?.sections ?? [],
           images: markerImages,
+          rawTables: (data.raw_tables as RawTable[]) ?? [],
+          textBlocks: (data.text_blocks as string[]) ?? [],
           aadharPhoto,
           error: null,
         });
@@ -357,21 +370,131 @@ function StatusBadge({ status }: { status: ExtractionStatus }) {
   );
 }
 
-function FieldsTable({ sections }: { sections: SectionData[] }) {
-  if (!sections.length) return null;
+function isSectionAnchorLabel(text: string): boolean {
+  return /^\s*[\u0900-\u097F]\s*\)/.test(text ?? "");
+}
+
+function splitLabelValue(line: string): { label: string; value: string | null } {
+  const trimmed = (line ?? "").trim();
+  if (!trimmed) return { label: "", value: null };
+  const lastSpace = trimmed.search(/\s+\S+$/);
+  if (lastSpace < 0) return { label: trimmed, value: null };
+  const label = trimmed.slice(0, lastSpace).trim();
+  const value = trimmed.slice(lastSpace).trim();
+  if (!label) return { label: trimmed, value: null };
+  if (/^[\u0966-\u096F0-9.,/\-()]+$/.test(value)) return { label, value };
+  return { label: trimmed, value: null };
+}
+
+function SpannedTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const colCount = Math.max(headers.length, ...rows.map((r) => r.length), 1);
+  type Cell = { value: string; rowspan: number };
+  const grid: (Cell | null)[][] = rows.map((r) => {
+    const padded: (Cell | null)[] = r.map((c) => ({ value: c ?? "", rowspan: 1 }));
+    while (padded.length < colCount) padded.push({ value: "", rowspan: 1 });
+    return padded;
+  });
+  for (let c = 0; c < colCount; c++) {
+    let anchorRow = -1;
+    for (let r = 0; r < grid.length; r++) {
+      const cell = grid[r][c];
+      if (cell === null) continue;
+      const isEmpty = !cell.value || cell.value.trim() === "";
+      if (!isEmpty) { anchorRow = r; }
+      else if (anchorRow >= 0) {
+        const anchor = grid[anchorRow][c];
+        if (anchor) anchor.rowspan += 1;
+        grid[r][c] = null;
+      }
+    }
+  }
+  if (colCount > 0) {
+    let sectionAnchorRow = -1;
+    for (let r = 0; r < grid.length; r++) {
+      const cell = grid[r][0];
+      if (cell === null) continue;
+      if (isSectionAnchorLabel(cell.value)) {
+        sectionAnchorRow = r;
+      } else if (sectionAnchorRow >= 0) {
+        const anchor = grid[sectionAnchorRow][0];
+        if (anchor) {
+          const sub = (cell.value ?? "").trim();
+          if (sub.length > 0) anchor.value = anchor.value ? `${anchor.value}\n${sub}` : sub;
+          anchor.rowspan += 1;
+        }
+        grid[r][0] = null;
+      }
+    }
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse border border-border text-xs">
+        {headers.length > 0 && (
+          <thead>
+            <tr className="bg-muted/40">
+              {headers.map((h, i) => (
+                <th key={i} className="border border-border p-2 text-left font-semibold align-top whitespace-pre-wrap">{h || ""}</th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {grid.map((row, rIdx) => (
+            <tr key={rIdx}>
+              {row.map((cell, cIdx) => {
+                if (cell === null) return null;
+                const hasContent = cell.value !== undefined && cell.value !== null && cell.value.length > 0;
+                const lines = (cell.value ?? "").split("\n");
+                return (
+                  <td key={cIdx} rowSpan={cell.rowspan > 1 ? cell.rowspan : undefined} className="border border-border px-2 py-1.5 align-top break-words">
+                    {hasContent ? (
+                      <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 leading-relaxed">
+                        {lines.flatMap((line, lIdx) => {
+                          const { label, value } = splitLabelValue(line);
+                          if (value === null) return [<div key={`${lIdx}-full`} className="col-span-2 whitespace-pre-wrap">{label.length > 0 ? label : "\u00A0"}</div>];
+                          return [
+                            <div key={`${lIdx}-label`} className="whitespace-pre-wrap">{label}</div>,
+                            <div key={`${lIdx}-value`} className="whitespace-pre-wrap text-right tabular-nums">{value}</div>,
+                          ];
+                        })}
+                      </div>
+                    ) : ""}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function FieldsTable({
+  sections,
+  rawTables = [],
+  textBlocks = [],
+  docId,
+}: {
+  sections: SectionData[];
+  rawTables?: RawTable[];
+  textBlocks?: string[];
+  docId?: DocTypeId;
+}) {
+  if (!sections.length && !rawTables.length && !textBlocks.length) return null;
   return (
     <div className="mt-3 space-y-4">
       {sections.map((sec) => (
         <div key={sec.title}>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{sec.title}</p>
-          {sec.fields.length > 0 && (
+          {sec.fields.filter(f => f.value && f.value !== "—").length > 0 && (
             <div className="rounded-md border border-border overflow-hidden">
               <table className="w-full text-xs">
                 <tbody>
                   {sec.fields.filter(f => f.value && f.value !== "—").map((f) => (
                     <tr key={f.key} className="border-b border-border last:border-0">
                       <td className="px-3 py-1.5 text-muted-foreground w-2/5 font-medium">{f.label}</td>
-                      <td className="px-3 py-1.5 text-foreground break-all">{f.value}</td>
+                      <td className="px-3 py-1.5 text-foreground break-words">{f.value}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -380,7 +503,7 @@ function FieldsTable({ sections }: { sections: SectionData[] }) {
           )}
           {sec.tables.map((tbl) => tbl.rows.length > 0 && (
             <div key={tbl.key} className="mt-2">
-              <p className="text-xs text-muted-foreground mb-1">{tbl.label}</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-1">{tbl.label}</p>
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="min-w-full text-xs">
                   <thead className="bg-muted/40">
@@ -401,6 +524,36 @@ function FieldsTable({ sections }: { sections: SectionData[] }) {
           ))}
         </div>
       ))}
+
+      {rawTables.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Source document tables</p>
+          {rawTables.map((tbl, idx) => (
+            <div key={tbl.blockId ?? idx} className="border-l-4 border-l-orange-400 bg-card border border-border rounded-md p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-700 mb-2">Table {idx + 1}</p>
+              {docId === "form7" ? (
+                <SpannedTable headers={tbl.headers} rows={tbl.rows} />
+              ) : (
+                <div
+                  className="[&_table]:w-full [&_table]:border-collapse [&_table]:text-xs [&_th]:border [&_th]:border-border [&_th]:bg-muted/40 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-border [&_td]:p-2 [&_td]:align-top text-foreground"
+                  dangerouslySetInnerHTML={{ __html: tbl.html }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {textBlocks.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Other text from document</p>
+          {textBlocks.map((t, i) => (
+            <div key={i} className="border-l-4 border-l-blue-400 bg-card border border-border rounded-md px-3 py-2 text-xs whitespace-pre-wrap break-words text-foreground">
+              {t}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -537,7 +690,12 @@ function DocUploadCard({
           </button>
           {expanded && (
             <div className="px-4 pb-4">
-              <FieldsTable sections={state.sections} />
+              <FieldsTable
+                sections={state.sections}
+                rawTables={state.rawTables}
+                textBlocks={state.textBlocks}
+                docId={card.id}
+              />
             </div>
           )}
         </div>
@@ -636,36 +794,31 @@ const PROFILE_SECTIONS: {
     ],
   },
   {
-    id: "land",
-    label: "Land Records — Form 7 / 8A / 12",
-    docIds: ["form7", "form8a", "form12"],
-    headerColor: "text-amber-700",
-    headerBg: "bg-amber-50 border-amber-200",
-    subHeaderColor: "text-amber-500",
+    id: "form7",
+    label: "Form 7 — Ownership Register",
+    docIds: ["form7"],
+    headerColor: "text-emerald-700",
+    headerBg: "bg-emerald-50 border-emerald-200",
+    subHeaderColor: "text-emerald-600",
     subsections: [
       {
-        label: "Header Details",
+        label: "Location",
         fields: [
           { key: "village", label: "Village (गाव)", placeholder: "Village name" },
           { key: "taluka", label: "Taluka (तालुका)", placeholder: "Taluka name" },
           { key: "district", label: "District (जिल्हा)", placeholder: "District name" },
           { key: "surveyNumber", label: "Survey Number (भूमापन क्रमांक)", placeholder: "e.g. 77/3" },
           { key: "puId", label: "PU-ID", placeholder: "Permanent Unique ID" },
-          { key: "form8aYear", label: "Year (वर्ष) — Form 8A", placeholder: "e.g. 2016-15" },
-          { key: "form8aReportDate", label: "Report Date — Form 8A", placeholder: "e.g. 12/20/2016" },
         ],
       },
       {
-        label: "Ownership Details",
+        label: "Ownership",
         fields: [
           { key: "khateNumber", label: "Khate Number (खाते क्र.)", placeholder: "e.g. 159" },
           { key: "occupantClass", label: "Occupant Class (भोगवटदार वर्ग)", placeholder: "e.g. Class 1" },
           { key: "ownerNames", label: "Owner Name(s) (शेताचे स्वामिनाव)", placeholder: "Full name(s)", span: true },
           { key: "ownerShare", label: "Owner Share / Hissa", placeholder: "e.g. 1/2" },
           { key: "modeOfAcquisition", label: "Mode of Acquisition", placeholder: "e.g. Purchase / Inheritance" },
-          { key: "khateAccountType", label: "Account Type (खात्याचा प्रकार)", placeholder: "e.g. अविभक्त कुटूंब खाते", span: true },
-          { key: "khatedarNames", label: "Khatedar Name(s) — Form 8A", placeholder: "Names as per 8A", span: true },
-          { key: "khatedarAddress", label: "Khatedar Address — Form 8A", placeholder: "Address of khatedar", span: true },
         ],
       },
       {
@@ -696,32 +849,92 @@ const PROFILE_SECTIONS: {
           { key: "pendingMutation", label: "Pending Mutation (प्रलंबित फेरफार)", placeholder: "Yes / No / None" },
         ],
       },
+    ],
+  },
+  {
+    id: "form12",
+    label: "Form 12 — Crop Inspection Register",
+    docIds: ["form12"],
+    headerColor: "text-green-700",
+    headerBg: "bg-green-50 border-green-200",
+    subHeaderColor: "text-green-600",
+    subsections: [
       {
-        label: "Form 8A — Totals",
+        label: "Location",
         fields: [
-          { key: "totalAssessment", label: "Total Assessment / Judi (एकूण आकारणी)", placeholder: "Total assessment amount" },
-          { key: "totalDamageInherited", label: "Total Damage on Inherited Land", placeholder: "दुमाला जमिनीवरील नुकसान" },
-          { key: "totalZpCess", label: "Total ZP Local Cess (जि.प. उपकर)", placeholder: "Zilla Parishad cess total" },
-          { key: "totalGpCess", label: "Total GP Local Cess (ग्रा.प. उपकर)", placeholder: "Gram Panchayat cess total" },
-          { key: "totalRecovery", label: "Total Recovery Amount (वसुलीसाठी)", placeholder: "Recovery total" },
-          { key: "grandTotal", label: "Grand Total (एकूण)", placeholder: "Final grand total" },
+          { key: "village", label: "Village (गाव)", placeholder: "Village name" },
+          { key: "taluka", label: "Taluka (तालुका)", placeholder: "Taluka name" },
+          { key: "district", label: "District (जिल्हा)", placeholder: "District name" },
+          { key: "surveyNumber", label: "Survey Number (भूमापन क्रमांक)", placeholder: "e.g. 77/3" },
+          { key: "khateNumber", label: "Khate Number (खाते क्र.)", placeholder: "e.g. 159" },
         ],
       },
       {
-        label: "Form 12 — Crop",
+        label: "Crop",
         fields: [
-          { key: "crop", label: "Primary Crop (पिकांचे नाव)", placeholder: "e.g. Soybean, Wheat, Cotton" },
+          { key: "crop", label: "Primary Crop (पिकांचे नाव)", placeholder: "e.g. Soybean, Wheat, Cotton", span: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "form8a",
+    label: "Form 8A — Holding Register",
+    docIds: ["form8a"],
+    headerColor: "text-teal-700",
+    headerBg: "bg-teal-50 border-teal-200",
+    subHeaderColor: "text-teal-600",
+    subsections: [
+      {
+        label: "Header",
+        fields: [
+          { key: "village", label: "Village (गाव)", placeholder: "Village name" },
+          { key: "taluka", label: "Taluka (तालुका)", placeholder: "Taluka name" },
+          { key: "district", label: "District (जिल्हा)", placeholder: "District name" },
+          { key: "form8aYear", label: "Year (वर्ष)", placeholder: "e.g. 2016-15" },
+          { key: "form8aReportDate", label: "Report Date", placeholder: "e.g. 12/20/2016" },
+        ],
+      },
+      {
+        label: "Khatedar",
+        fields: [
+          { key: "khateNumber", label: "Khate Number (खाते क्र.)", placeholder: "e.g. 159" },
+          { key: "khateAccountType", label: "Account Type (खात्याचा प्रकार)", placeholder: "e.g. अविभक्त कुटूंब खाते", span: true },
+          { key: "khatedarNames", label: "Khatedar Name(s)", placeholder: "Names as per 8A", span: true },
+          { key: "khatedarAddress", label: "Khatedar Address", placeholder: "Address of khatedar", span: true },
+        ],
+      },
+      {
+        label: "Totals",
+        fields: [
+          { key: "land", label: "Total Area (एकूण क्षेत्र)", placeholder: "Total area" },
+          { key: "totalAssessment", label: "Total Assessment / Judi (एकूण आकारणी)", placeholder: "Total assessment amount" },
+          { key: "totalDamageInherited", label: "Total Damage on Inherited Land (दुमाला)", placeholder: "दुमाला जमिनीवरील नुकसान" },
+          { key: "totalZpCess", label: "Total ZP Local Cess (जि.प.)", placeholder: "Zilla Parishad cess total" },
+          { key: "totalGpCess", label: "Total GP Local Cess (ग्रा.प.)", placeholder: "Gram Panchayat cess total" },
+          { key: "totalRecovery", label: "Total Recovery Amount (वसुलीसाठी)", placeholder: "Recovery total" },
+          { key: "grandTotal", label: "Grand Total (एकूण)", placeholder: "Final grand total" },
         ],
       },
     ],
   },
 ];
 
-const ALL_PROFILE_FIELDS = PROFILE_SECTIONS.flatMap(s => s.subsections.flatMap(sub => sub.fields));
+const ALL_PROFILE_FIELDS = (() => {
+  const seen = new Set<string>();
+  return PROFILE_SECTIONS.flatMap(s => s.subsections.flatMap(sub => sub.fields)).filter(f => {
+    if (seen.has(f.key)) return false;
+    seen.add(f.key);
+    return true;
+  });
+})();
 
 function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, ExtractionState> }) {
   const [open, setOpen] = useState(false);
-  const cards = DOC_CARDS.filter(c => docStates[c.id].status === "complete" && docStates[c.id].sections.length > 0);
+  const cards = DOC_CARDS.filter(c => {
+    const s = docStates[c.id];
+    return s.status === "complete" && (s.sections.length > 0 || s.rawTables.length > 0 || s.textBlocks.length > 0);
+  });
   if (!cards.length) return null;
 
   const totalFields = cards.reduce((sum, c) =>
@@ -769,7 +982,12 @@ function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, Extracti
                     </div>
                   </div>
                 )}
-                <FieldsTable sections={state.sections} />
+                <FieldsTable
+                  sections={state.sections}
+                  rawTables={state.rawTables}
+                  textBlocks={state.textBlocks}
+                  docId={card.id}
+                />
               </div>
             );
           })}

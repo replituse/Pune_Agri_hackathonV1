@@ -438,7 +438,7 @@ function parseHtmlTable(html: string): { headers: string[]; rows: string[][] } {
  * into `{headers, rows, html}`. Used for documents (like Form 7) where the
  * source table contains rich category sub-rows we don't want to lose.
  */
-function extractTablesFromMarkerJson(json: unknown): Form7Table[] {
+export function extractTablesFromMarkerJson(json: unknown): Form7Table[] {
   const tables: Form7Table[] = [];
   if (!json || typeof json !== "object") return tables;
 
@@ -476,7 +476,7 @@ function extractTablesFromMarkerJson(json: unknown): Form7Table[] {
  * detail that doesn't fall inside a Table or Picture (e.g. the "जुने फेरफार
  * क्र : (१) (११८) …" footer text on Form 7).
  */
-function extractTextBlocksFromMarkerJson(json: unknown): string[] {
+export function extractTextBlocksFromMarkerJson(json: unknown): string[] {
   const out: string[] = [];
   if (!json || typeof json !== "object") return out;
 
