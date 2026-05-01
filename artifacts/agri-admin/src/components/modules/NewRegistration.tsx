@@ -125,9 +125,38 @@ export interface FarmerProfile {
   village: string;
   district: string;
   taluka: string;
-  land: string;
-  crop: string;
   surveyNumber: string;
+  puId: string;
+  khateNumber: string;
+  occupantClass: string;
+  ownerNames: string;
+  ownerShare: string;
+  modeOfAcquisition: string;
+  land: string;
+  landRevenue: string;
+  collectionCharges: string;
+  nonAgriculturalArea: string;
+  nonCultivatedArea: string;
+  tenantName: string;
+  tenantRent: string;
+  otherRights: string;
+  encumbrances: string;
+  boundaryMarks: string;
+  lastMutationNumber: string;
+  lastMutationDate: string;
+  pendingMutation: string;
+  form8aYear: string;
+  form8aReportDate: string;
+  khateAccountType: string;
+  khatedarNames: string;
+  khatedarAddress: string;
+  totalAssessment: string;
+  totalDamageInherited: string;
+  totalZpCess: string;
+  totalGpCess: string;
+  totalRecovery: string;
+  grandTotal: string;
+  crop: string;
   bankName: string;
   branchName: string;
   branchAddress: string;
@@ -145,9 +174,15 @@ export interface FarmerProfile {
 
 const EMPTY_PROFILE: FarmerProfile = {
   name: "", aadhaar: "", vid: "", dob: "", gender: "", fathersName: "",
-  mobile: "", address: "", pincode: "", state: "", issueDate: "",
-  enrolmentNumber: "", village: "", district: "", taluka: "", land: "",
-  crop: "", surveyNumber: "",
+  mobile: "", address: "", pincode: "", state: "", issueDate: "", enrolmentNumber: "",
+  village: "", district: "", taluka: "", surveyNumber: "", puId: "",
+  khateNumber: "", occupantClass: "", ownerNames: "", ownerShare: "", modeOfAcquisition: "",
+  land: "", landRevenue: "", collectionCharges: "", nonAgriculturalArea: "", nonCultivatedArea: "",
+  tenantName: "", tenantRent: "", otherRights: "", encumbrances: "", boundaryMarks: "",
+  lastMutationNumber: "", lastMutationDate: "", pendingMutation: "",
+  form8aYear: "", form8aReportDate: "", khateAccountType: "", khatedarNames: "",
+  khatedarAddress: "", totalAssessment: "", totalDamageInherited: "",
+  totalZpCess: "", totalGpCess: "", totalRecovery: "", grandTotal: "", crop: "",
   bankName: "", branchName: "", branchAddress: "", ifsc: "", micrCode: "",
   bankAccount: "", accountType: "", accountOpeningDate: "", customerIdCif: "",
   nomineeRelationship: "", bankHolderName: "", bankCustomerAddress: "", email: "",
@@ -252,13 +287,56 @@ function extractProfileFromStates(
   pick(["nominee_relationship"], "nomineeRelationship", ["bank_passbook"]);
   pick(["email"], "email", ["bank_passbook"]);
 
-  // --- Land records (Form 7 / 8A / 12) only ---
-  pick(["village", "gram"], "village", ["form7", "form8a", "form12"]);
-  pick(["district", "jilha"], "district", ["form7", "form8a"]);
-  pick(["taluka"], "taluka", ["form7", "form8a"]);
-  pick(["area", "land", "holding", "total_area"], "land", ["form8a", "form7"]);
+  // --- Form 7 / 8A / 12 — Location (common across all three) ---
+  pick(["village"], "village", ["form7", "form8a", "form12"]);
+  pick(["taluka"], "taluka", ["form7", "form8a", "form12"]);
+  pick(["district"], "district", ["form7", "form8a", "form12"]);
+  pick(["survey_number"], "surveyNumber", ["form7", "form12"]);
+  pick(["pu_id"], "puId", ["form7"]);
+
+  // --- Form 7 / 8A — Ownership ---
+  pick(["khate_number", "khate number"], "khateNumber", ["form7", "form8a", "form12"]);
+  pick(["occupant_class"], "occupantClass", ["form7"]);
+  pick(["owner_names", "owner name"], "ownerNames", ["form7"]);
+  pick(["owner_share"], "ownerShare", ["form7"]);
+  pick(["mode_of_acquisition"], "modeOfAcquisition", ["form7"]);
+
+  // --- Form 7 / 8A — Area & Assessment ---
+  pick(["total_area"], "land", ["form7", "form8a"]);
+  pick(["land_revenue_assessment"], "landRevenue", ["form7"]);
+  pick(["collection_charges"], "collectionCharges", ["form7"]);
+  pick(["non_agricultural_area"], "nonAgriculturalArea", ["form7"]);
+  pick(["non_cultivated_area"], "nonCultivatedArea", ["form7"]);
+
+  // --- Form 7 — Rights & Encumbrances ---
+  pick(["tenant_name"], "tenantName", ["form7"]);
+  pick(["tenant_rent"], "tenantRent", ["form7"]);
+  pick(["other_rights"], "otherRights", ["form7"]);
+  pick(["encumbrances"], "encumbrances", ["form7"]);
+  pick(["boundary_and_survey_marks"], "boundaryMarks", ["form7"]);
+
+  // --- Form 7 — Mutation ---
+  pick(["last_mutation_number"], "lastMutationNumber", ["form7"]);
+  pick(["last_mutation_date"], "lastMutationDate", ["form7"]);
+  pick(["pending_mutation"], "pendingMutation", ["form7"]);
+
+  // --- Form 8A — Header & Khatedar ---
+  pick(["year"], "form8aYear", ["form8a"]);
+  pick(["report_date"], "form8aReportDate", ["form8a"]);
+  pick(["account_type", "khata type", "account type"], "khateAccountType", ["form8a"]);
+  pick(["khatedar_names", "khatedar name"], "khatedarNames", ["form8a"]);
+  pick(["khatedar_address"], "khatedarAddress", ["form8a"]);
+
+  // --- Form 8A — Totals ---
+  pick(["total_assessment_or_judi", "total assessment"], "totalAssessment", ["form8a"]);
+  pick(["total_damage_on_inherited_land", "total damage"], "totalDamageInherited", ["form8a"]);
+  pick(["total_zp_local_cess", "zp local cess"], "totalZpCess", ["form8a"]);
+  pick(["total_gp_local_cess", "gp local cess"], "totalGpCess", ["form8a"]);
+  pick(["total_recovery_amount", "total recovery"], "totalRecovery", ["form8a"]);
+  pick(["grand_total"], "grandTotal", ["form8a"]);
+
+  // --- Form 12 — Crop ---
   pick(["crop_name", "crop"], "crop", ["form12"]);
-  pick(["survey", "gat", "plot", "khata"], "surveyNumber", ["form7", "form8a"]);
 
   return out;
 }
@@ -566,19 +644,73 @@ const PROFILE_SECTIONS: {
     subHeaderColor: "text-amber-500",
     subsections: [
       {
-        label: "Location",
+        label: "Header Details",
         fields: [
-          { key: "village", label: "Village / Gram", placeholder: "Village name" },
-          { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
-          { key: "district", label: "District", placeholder: "District name" },
+          { key: "village", label: "Village (गाव)", placeholder: "Village name" },
+          { key: "taluka", label: "Taluka (तालुका)", placeholder: "Taluka name" },
+          { key: "district", label: "District (जिल्हा)", placeholder: "District name" },
+          { key: "surveyNumber", label: "Survey Number (भूमापन क्रमांक)", placeholder: "e.g. 77/3" },
+          { key: "puId", label: "PU-ID", placeholder: "Permanent Unique ID" },
+          { key: "form8aYear", label: "Year (वर्ष) — Form 8A", placeholder: "e.g. 2016-15" },
+          { key: "form8aReportDate", label: "Report Date — Form 8A", placeholder: "e.g. 12/20/2016" },
         ],
       },
       {
-        label: "Land & Crop",
+        label: "Ownership Details",
         fields: [
-          { key: "land", label: "Land Area", placeholder: "e.g. 3.5 hectares" },
-          { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
-          { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
+          { key: "khateNumber", label: "Khate Number (खाते क्र.)", placeholder: "e.g. 159" },
+          { key: "occupantClass", label: "Occupant Class (भोगवटदार वर्ग)", placeholder: "e.g. Class 1" },
+          { key: "ownerNames", label: "Owner Name(s) (शेताचे स्वामिनाव)", placeholder: "Full name(s)", span: true },
+          { key: "ownerShare", label: "Owner Share / Hissa", placeholder: "e.g. 1/2" },
+          { key: "modeOfAcquisition", label: "Mode of Acquisition", placeholder: "e.g. Purchase / Inheritance" },
+          { key: "khateAccountType", label: "Account Type (खात्याचा प्रकार)", placeholder: "e.g. अविभक्त कुटूंब खाते", span: true },
+          { key: "khatedarNames", label: "Khatedar Name(s) — Form 8A", placeholder: "Names as per 8A", span: true },
+          { key: "khatedarAddress", label: "Khatedar Address — Form 8A", placeholder: "Address of khatedar", span: true },
+        ],
+      },
+      {
+        label: "Area & Assessment",
+        fields: [
+          { key: "land", label: "Total Area (क्षेत्र)", placeholder: "e.g. 2.06.00 H.R." },
+          { key: "landRevenue", label: "Land Revenue Assessment (आकार)", placeholder: "Annual tax amount" },
+          { key: "collectionCharges", label: "Collection Charges (पो.ख.)", placeholder: "Admin fee" },
+          { key: "nonAgriculturalArea", label: "Non-Agricultural Area (अकृषिक क्षेत्र)", placeholder: "Area in non-agri use" },
+          { key: "nonCultivatedArea", label: "Non-Cultivated Area (बिन शेती)", placeholder: "Uncultivated land" },
+        ],
+      },
+      {
+        label: "Rights & Encumbrances",
+        fields: [
+          { key: "tenantName", label: "Tenant Name (कुळाचे नाव)", placeholder: "Tenant / kul name" },
+          { key: "tenantRent", label: "Tenant Rent (खंड)", placeholder: "Rent amount" },
+          { key: "otherRights", label: "Other Rights (इतर अधिकार)", placeholder: "Easements, water rights…", span: true },
+          { key: "encumbrances", label: "Encumbrance / Mortgage (बोजा / तारण)", placeholder: "Bank name & loan amount", span: true },
+          { key: "boundaryMarks", label: "Boundary & Survey Marks", placeholder: "Boundary notes", span: true },
+        ],
+      },
+      {
+        label: "Mutation",
+        fields: [
+          { key: "lastMutationNumber", label: "Last Mutation No. (शेवटचा फेरफार क्र.)", placeholder: "e.g. 742" },
+          { key: "lastMutationDate", label: "Last Mutation Date", placeholder: "Date of last mutation" },
+          { key: "pendingMutation", label: "Pending Mutation (प्रलंबित फेरफार)", placeholder: "Yes / No / None" },
+        ],
+      },
+      {
+        label: "Form 8A — Totals",
+        fields: [
+          { key: "totalAssessment", label: "Total Assessment / Judi (एकूण आकारणी)", placeholder: "Total assessment amount" },
+          { key: "totalDamageInherited", label: "Total Damage on Inherited Land", placeholder: "दुमाला जमिनीवरील नुकसान" },
+          { key: "totalZpCess", label: "Total ZP Local Cess (जि.प. उपकर)", placeholder: "Zilla Parishad cess total" },
+          { key: "totalGpCess", label: "Total GP Local Cess (ग्रा.प. उपकर)", placeholder: "Gram Panchayat cess total" },
+          { key: "totalRecovery", label: "Total Recovery Amount (वसुलीसाठी)", placeholder: "Recovery total" },
+          { key: "grandTotal", label: "Grand Total (एकूण)", placeholder: "Final grand total" },
+        ],
+      },
+      {
+        label: "Form 12 — Crop",
+        fields: [
+          { key: "crop", label: "Primary Crop (पिकांचे नाव)", placeholder: "e.g. Soybean, Wheat, Cotton" },
         ],
       },
     ],
