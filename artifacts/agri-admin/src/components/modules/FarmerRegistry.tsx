@@ -1,10 +1,34 @@
-import { useState, useMemo } from "react";
-import { Search, Plus, Upload, Download, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, Plus, Upload, Download, X, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { farmers } from "@/data/dummyData";
+import { getApprovedFarmers, subscribeToFarmers, FarmerRecord } from "@/data/farmerStore";
 import FarmerRegistrationForm from "@/components/forms/FarmerRegistrationForm";
 
-const districts = [...new Set(farmers.map(f => f.district))];
-const crops = [...new Set(farmers.map(f => f.crop))];
+type AnyFarmer = {
+  id: string;
+  name: string;
+  village: string;
+  district: string;
+  land: number;
+  crop: string;
+  aadhaar: string;
+  status: string;
+  source?: string;
+};
+
+function toAnyFarmer(f: typeof farmers[0] | FarmerRecord): AnyFarmer {
+  return {
+    id: f.id,
+    name: f.name,
+    village: f.village,
+    district: f.district,
+    land: Number(f.land),
+    crop: f.crop,
+    aadhaar: f.aadhaar,
+    status: f.status,
+    source: (f as FarmerRecord).source,
+  };
+}
 
 function StatusBadge({ status }: { status: string }) {
   const cls = status === "Active" ? "bg-success/10 text-success" :
@@ -19,18 +43,34 @@ export default function FarmerRegistry() {
   const [cropFilter, setCropFilter] = useState("");
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
-  const [viewFarmer, setViewFarmer] = useState<typeof farmers[0] | null>(null);
+  const [viewFarmer, setViewFarmer] = useState<AnyFarmer | null>(null);
   const [toast, setToast] = useState("");
+  const [approvedFarmers, setApprovedFarmers] = useState<FarmerRecord[]>(() => getApprovedFarmers());
+
+  useEffect(() => {
+    return subscribeToFarmers(() => {
+      setApprovedFarmers(getApprovedFarmers());
+    });
+  }, []);
+
+  const allFarmers = useMemo<AnyFarmer[]>(() => {
+    const base = farmers.map(toAnyFarmer);
+    const approved = approvedFarmers.map(toAnyFarmer);
+    return [...approved, ...base];
+  }, [approvedFarmers]);
+
+  const districts = useMemo(() => [...new Set(allFarmers.map(f => f.district))], [allFarmers]);
+  const crops = useMemo(() => [...new Set(allFarmers.map(f => f.crop))], [allFarmers]);
 
   const filtered = useMemo(() => {
-    return farmers.filter(f => {
+    return allFarmers.filter(f => {
       const s = search.toLowerCase();
       const matchSearch = !s || f.name.toLowerCase().includes(s) || f.id.toLowerCase().includes(s) || f.aadhaar.includes(s);
       const matchDist = !distFilter || f.district === distFilter;
       const matchCrop = !cropFilter || f.crop === cropFilter;
       return matchSearch && matchDist && matchCrop;
     });
-  }, [search, distFilter, cropFilter]);
+  }, [search, distFilter, cropFilter, allFarmers]);
 
   const totalPages = Math.ceil(filtered.length / 10);
   const pageData = filtered.slice(page * 10, (page + 1) * 10);
@@ -42,14 +82,19 @@ export default function FarmerRegistry() {
 
   return (
     <div className="space-y-4 animate-fade-in" style={{ opacity: 0 }}>
-      {/* Toast */}
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-primary text-primary-foreground px-4 py-3 rounded-lg shadow-lg text-sm animate-fade-in" style={{ opacity: 0 }}>
           {toast}
         </div>
       )}
 
-      {/* Top Bar */}
+      {approvedFarmers.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+          <Sparkles className="h-4 w-4 flex-shrink-0" />
+          <span><strong>{approvedFarmers.length}</strong> new farmer{approvedFarmers.length > 1 ? "s" : ""} added via OCR registration and appear{approvedFarmers.length === 1 ? "s" : ""} at the top of the list.</span>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -72,7 +117,6 @@ export default function FarmerRegistry() {
         <button onClick={() => showToast("📁 Export started...")} className="flex items-center gap-1.5 text-sm px-3 py-2 bg-card border border-border rounded-lg hover:bg-muted"><Download className="h-4 w-4" /> Export</button>
       </div>
 
-      {/* Table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -91,8 +135,20 @@ export default function FarmerRegistry() {
             </thead>
             <tbody>
               {pageData.map(f => (
-                <tr key={f.id} className="border-t border-border/50 table-row-alt hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-2.5 font-mono text-xs">{f.id}</td>
+                <tr
+                  key={f.id}
+                  className={`border-t border-border/50 table-row-alt hover:bg-muted/30 transition-colors ${f.source === "ocr" ? "bg-emerald-50/40" : ""}`}
+                >
+                  <td className="px-4 py-2.5 font-mono text-xs">
+                    <span className="flex items-center gap-1">
+                      {f.id}
+                      {f.source === "ocr" && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                          <Sparkles className="h-2.5 w-2.5" />OCR
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-4 py-2.5 font-medium">{f.name}</td>
                   <td className="px-4 py-2.5">{f.village}</td>
                   <td className="px-4 py-2.5">{f.district}</td>
@@ -120,13 +176,19 @@ export default function FarmerRegistry() {
         </div>
       </div>
 
-      {/* View Farmer Modal */}
       {viewFarmer && (
         <div className="fixed inset-0 bg-foreground/30 z-50 flex items-center justify-center p-4" onClick={() => setViewFarmer(null)}>
           <div className="bg-card border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 animate-fade-in" style={{ opacity: 0 }} onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="font-heading text-xl">{viewFarmer.name}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-heading text-xl">{viewFarmer.name}</h2>
+                  {viewFarmer.source === "ocr" && (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                      <Sparkles className="h-3 w-3" />OCR Registered
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">{viewFarmer.id} · {viewFarmer.village}, {viewFarmer.district}</p>
               </div>
               <button onClick={() => setViewFarmer(null)}><X className="h-5 w-5" /></button>
@@ -149,44 +211,47 @@ export default function FarmerRegistry() {
                 <StatusBadge status={viewFarmer.status} />
               </div>
             </div>
-            <div className="mb-4">
-              <h4 className="font-heading text-sm mb-2">Scheme Enrollments</h4>
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs px-2.5 py-1 rounded-full bg-success/10 text-success">PM-KISAN ✅</span>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-success/10 text-success">PMFBY ✅</span>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-warning/20 text-warning">KCC ⏳</span>
-              </div>
-            </div>
-            <div className="mb-4">
-              <h4 className="font-heading text-sm mb-2">AI Risk Score</h4>
-              <div className="flex items-center gap-3">
-                <div className="relative w-16 h-16">
-                  <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="hsl(140 20% 90%)" strokeWidth="3" />
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="hsl(142 60% 40%)" strokeWidth="3" strokeDasharray="88" strokeDashoffset={88 - 88 * 0.32} strokeLinecap="round" />
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">32</span>
-                </div>
-                <span className="text-sm text-success font-medium">Low Risk</span>
-              </div>
-            </div>
-            <div className="mb-4">
-              <h4 className="font-heading text-sm mb-2">Documents</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {["Aadhaar Card", "Land Record", "Bank Passbook", "Photo ID"].map(d => (
-                  <div key={d} className="flex items-center gap-2 bg-muted/30 rounded-lg p-2.5 text-sm">
-                    <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center text-xs">📄</div>
-                    <span>{d}</span>
-                    <button className="ml-auto text-xs text-secondary hover:underline">View</button>
+            {!viewFarmer.source && (
+              <>
+                <div className="mb-4">
+                  <h4 className="font-heading text-sm mb-2">Scheme Enrollments</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-success/10 text-success">PM-KISAN ✅</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-success/10 text-success">PMFBY ✅</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-warning/20 text-warning">KCC ⏳</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+                <div className="mb-4">
+                  <h4 className="font-heading text-sm mb-2">AI Risk Score</h4>
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-16 h-16">
+                      <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="14" fill="none" stroke="hsl(140 20% 90%)" strokeWidth="3" />
+                        <circle cx="18" cy="18" r="14" fill="none" stroke="hsl(142 60% 40%)" strokeWidth="3" strokeDasharray="88" strokeDashoffset={88 - 88 * 0.32} strokeLinecap="round" />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">32</span>
+                    </div>
+                    <span className="text-sm text-success font-medium">Low Risk</span>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <h4 className="font-heading text-sm mb-2">Documents</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Aadhaar Card", "Land Record", "Bank Passbook", "Photo ID"].map(d => (
+                      <div key={d} className="flex items-center gap-2 bg-muted/30 rounded-lg p-2.5 text-sm">
+                        <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center text-xs">📄</div>
+                        <span>{d}</span>
+                        <button className="ml-auto text-xs text-secondary hover:underline">View</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Add Farmer Modal - Now uses detailed form */}
       {showAdd && (
         <FarmerRegistrationForm onClose={() => setShowAdd(false)} onSuccess={showToast} />
       )}
