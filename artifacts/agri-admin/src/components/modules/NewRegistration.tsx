@@ -129,15 +129,26 @@ export interface FarmerProfile {
   crop: string;
   surveyNumber: string;
   bankName: string;
-  bankAccount: string;
+  branchName: string;
+  branchAddress: string;
   ifsc: string;
+  micrCode: string;
+  bankAccount: string;
+  accountType: string;
+  accountOpeningDate: string;
+  customerIdCif: string;
+  nomineeRelationship: string;
+  email: string;
 }
 
 const EMPTY_PROFILE: FarmerProfile = {
   name: "", aadhaar: "", vid: "", dob: "", gender: "", fathersName: "",
   mobile: "", address: "", pincode: "", state: "", issueDate: "",
   enrolmentNumber: "", village: "", district: "", taluka: "", land: "",
-  crop: "", surveyNumber: "", bankName: "", bankAccount: "", ifsc: "",
+  crop: "", surveyNumber: "",
+  bankName: "", branchName: "", branchAddress: "", ifsc: "", micrCode: "",
+  bankAccount: "", accountType: "", accountOpeningDate: "", customerIdCif: "",
+  nomineeRelationship: "", email: "",
 };
 
 function sleep(ms: number) {
@@ -212,18 +223,29 @@ function extractProfileFromStates(
     }
   };
 
-  pick(["full_name", "name", "owner", "holder", "applicant", "account_holder"], "name", ["aadhar", "bank_passbook"]);
+  pick(["full_name", "name", "owner", "holder", "applicant", "account_holder", "account_holder_name"], "name", ["aadhar", "bank_passbook"]);
   pick(["aadhaar_number", "aadhaar", "uid", "aadhar", "uidai"], "aadhaar", ["aadhar"]);
   pick(["vid", "virtual_id", "virtual id"], "vid", ["aadhar"]);
   pick(["date_of_birth", "dob", "birth"], "dob", ["aadhar"]);
   pick(["gender"], "gender", ["aadhar"]);
   pick(["father", "husband", "guardian", "care_of"], "fathersName", ["aadhar"]);
-  pick(["mobile", "phone", "contact"], "mobile", ["aadhar", "bank_passbook"]);
+  pick(["mobile", "mobile_number", "phone", "contact"], "mobile", ["aadhar", "bank_passbook"]);
   pick(["address", "customer address"], "address", ["aadhar", "bank_passbook"]);
   pick(["pincode", "pin code", "pin_code", "postal"], "pincode", ["aadhar"]);
   pick(["state"], "state", ["aadhar"]);
   pick(["issue_date", "issue date", "issued"], "issueDate", ["aadhar"]);
   pick(["enrolment_number", "enrolment no", "enrolment"], "enrolmentNumber", ["aadhar"]);
+  pick(["bank_name", "bank"], "bankName", ["bank_passbook"]);
+  pick(["branch_name", "branch"], "branchName", ["bank_passbook"]);
+  pick(["branch_address"], "branchAddress", ["bank_passbook"]);
+  pick(["ifsc", "ifsc_code"], "ifsc", ["bank_passbook"]);
+  pick(["micr", "micr_code"], "micrCode", ["bank_passbook"]);
+  pick(["account_number", "account_no", "acc_no"], "bankAccount", ["bank_passbook"]);
+  pick(["account_type"], "accountType", ["bank_passbook"]);
+  pick(["account_opening_date", "opening_date", "date_of_opening"], "accountOpeningDate", ["bank_passbook"]);
+  pick(["customer_id", "cif", "cif_number", "customer_id_cif"], "customerIdCif", ["bank_passbook"]);
+  pick(["nominee_relationship", "relationship", "nominee"], "nomineeRelationship", ["bank_passbook"]);
+  pick(["email", "email_id", "e_mail"], "email", ["bank_passbook"]);
   pick(["village", "gram", "गाव"], "village", ["form7", "form8a", "form12"]);
   pick(["district", "jilha", "जिल्हा"], "district", ["form7", "form8a"]);
   pick(["taluka"], "taluka", ["form7", "form8a"]);
@@ -464,8 +486,16 @@ const CORE_PROFILE_FIELDS: { key: keyof FarmerProfile; label: string; placeholde
   { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
   { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
   { key: "bankName", label: "Bank Name", placeholder: "e.g. State Bank of India" },
-  { key: "bankAccount", label: "Bank Account Number", placeholder: "Account number" },
-  { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0001234" },
+  { key: "branchName", label: "Branch Name", placeholder: "e.g. Samta Nagar Thane" },
+  { key: "branchAddress", label: "Branch Address", placeholder: "Branch full address", span: true },
+  { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0013035" },
+  { key: "micrCode", label: "MICR Code", placeholder: "9-digit MICR code" },
+  { key: "bankAccount", label: "Account Number", placeholder: "Account number" },
+  { key: "accountType", label: "Account Type", placeholder: "e.g. Regular Savings Bank Account" },
+  { key: "accountOpeningDate", label: "Account Opening Date", placeholder: "DD/MM/YYYY" },
+  { key: "customerIdCif", label: "Customer ID (CIF)", placeholder: "CIF number" },
+  { key: "nomineeRelationship", label: "Nominee Relationship", placeholder: "e.g. S/D/H/o" },
+  { key: "email", label: "Email Address", placeholder: "e.g. name@bank.in" },
 ];
 
 function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, ExtractionState> }) {
