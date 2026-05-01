@@ -214,19 +214,41 @@ async function pollUntilDone(
   while (attempts < maxAttempts) {
     await sleep(3000);
     attempts++;
+    const pollUrl = `${BASE_URL}/api/extract/${requestId}`;
     try {
-      const res = await fetch(`${BASE_URL}/api/extract/${requestId}`);
+      const res = await fetch(pollUrl);
       let data: Record<string, unknown>;
       try {
         data = await res.json();
-      } catch {
+      } catch (parseErr) {
+        console.error(
+          `[AgriAdmin] Poll attempt ${attempts}: Failed to parse JSON response from ${pollUrl}`,
+          { status: res.status, statusText: res.statusText, parseErr },
+        );
         onError("API server is unavailable. Please try again in a moment.");
         return;
       }
-      if (!res.ok) { onError((data?.error as string) ?? `Server error ${res.status}`); return; }
-      if (data.status === "processing") continue;
-      if (data.status === "error") { onError((data.error as string) ?? "Extraction failed."); return; }
+      if (!res.ok) {
+        const msg = (data?.error as string) ?? `Server error ${res.status}`;
+        console.error(
+          `[AgriAdmin] Poll attempt ${attempts}: Non-OK response from ${pollUrl}`,
+          { status: res.status, data },
+        );
+        onError(msg);
+        return;
+      }
+      if (data.status === "processing") {
+        console.debug(`[AgriAdmin] Poll attempt ${attempts}/${maxAttempts}: still processing (requestId=${requestId})`);
+        continue;
+      }
+      if (data.status === "error") {
+        const msg = (data.error as string) ?? "Extraction failed.";
+        console.error(`[AgriAdmin] Extraction error from server for requestId=${requestId}:`, data);
+        onError(msg);
+        return;
+      }
       if (data.status === "complete") {
+        console.info(`[AgriAdmin] Extraction complete for requestId=${requestId} after ${attempts} poll(s)`);
         const markerImages: Record<string, string> | null = data.marker?.images ?? null;
         const aadharPhoto: { base64: string; mimeType: string } | null =
           data.aadhar_photo ?? null;
@@ -243,10 +265,15 @@ async function pollUntilDone(
         return;
       }
     } catch (err) {
+      console.error(
+        `[AgriAdmin] Poll attempt ${attempts}: Network error fetching ${pollUrl}`,
+        err,
+      );
       onError(err instanceof Error ? err.message : "Network error");
       return;
     }
   }
+  console.error(`[AgriAdmin] Extraction timed out after ${maxAttempts} poll attempts (requestId=${requestId})`);
   onError("Timed out waiting for extraction result.");
 }
 
@@ -581,28 +608,41 @@ function DocUploadCard({
 
   const handleFile = useCallback(async (file: File) => {
     onStateChange({ ...DEFAULT_STATE, status: "uploading", filename: file.name });
+    const uploadUrl = `${BASE_URL}/api/extract`;
     const body = new FormData();
     body.append("file", file);
     body.append("document_type", card.id);
     body.append("mode", "accurate");
+    console.info(`[AgriAdmin] Uploading "${file.name}" (${Math.round(file.size / 1024)} KB) as document_type=${card.id} to ${uploadUrl}`);
     try {
-      const res = await fetch(`${BASE_URL}/api/extract`, { method: "POST", body });
+      const res = await fetch(uploadUrl, { method: "POST", body });
       let data: Record<string, unknown> | null = null;
       try {
         data = await res.json();
-      } catch {
+      } catch (parseErr) {
+        console.error(
+          `[AgriAdmin] Upload: Failed to parse JSON response from ${uploadUrl}`,
+          { status: res.status, statusText: res.statusText, file: file.name, parseErr },
+        );
         onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "API server is unavailable. Please try again in a moment." });
         return;
       }
       if (!res.ok) {
-        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: (data?.error as string) ?? `Upload failed (${res.status})` });
+        const errMsg = (data?.error as string) ?? `Upload failed (${res.status})`;
+        console.error(
+          `[AgriAdmin] Upload: Non-OK response (${res.status}) from ${uploadUrl}`,
+          { file: file.name, data },
+        );
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: errMsg });
         return;
       }
       const reqId = data?.request_id as string;
       if (!reqId) {
+        console.error(`[AgriAdmin] Upload: Server did not return a request_id`, { data });
         onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "Server did not return a request ID." });
         return;
       }
+      console.info(`[AgriAdmin] Upload accepted, requestId=${reqId}, starting to poll…`);
       onStateChange((prev: ExtractionState) => ({ ...prev, status: "processing", requestId: reqId }));
       setExpanded(true);
       pollUntilDone(
@@ -611,6 +651,10 @@ function DocUploadCard({
         (msg) => { onStateChange((prev: ExtractionState) => ({ ...prev, status: "error", error: msg })); },
       );
     } catch (err) {
+      console.error(
+        `[AgriAdmin] Upload: Network error sending to ${uploadUrl}`,
+        { file: file.name, err },
+      );
       onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: err instanceof Error ? err.message : "Network error" });
     }
   }, [card.id, onStateChange]);
@@ -1133,6 +1177,23 @@ export default function NewRegistration() {
   const [approved, setApproved] = useState(false);
 
   const anyExtracted = Object.values(docStates).some((s) => s.status === "complete");
+
+  useEffect(() => {
+    const checkApi = async () => {
+      const healthUrl = `${BASE_URL}/api/document-types`;
+      try {
+        const res = await fetch(healthUrl);
+        if (res.ok) {
+          console.info(`[AgriAdmin] API server reachable at ${healthUrl} (${res.status})`);
+        } else {
+          console.warn(`[AgriAdmin] API server responded with non-OK status ${res.status} at ${healthUrl}`);
+        }
+      } catch (err) {
+        console.error(`[AgriAdmin] API server is NOT reachable at ${healthUrl} — uploads will fail`, err);
+      }
+    };
+    checkApi();
+  }, []);
 
   useEffect(() => {
     if (!anyExtracted) return;
