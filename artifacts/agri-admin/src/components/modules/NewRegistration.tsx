@@ -94,6 +94,8 @@ interface ExtractionState {
   requestId: string | null;
   sections: SectionData[];
   images: Record<string, string> | null;
+  /** Server-picked portrait photo (base64 + mimeType). Only set for Aadhaar. */
+  aadharPhoto: { base64: string; mimeType: string } | null;
   error: string | null;
 }
 
@@ -103,6 +105,7 @@ const DEFAULT_STATE: ExtractionState = {
   requestId: null,
   sections: [],
   images: null,
+  aadharPhoto: null,
   error: null,
 };
 
@@ -157,11 +160,14 @@ async function pollUntilDone(
       if (data.status === "error") { onError(data.error ?? "Extraction failed."); return; }
       if (data.status === "complete") {
         const markerImages: Record<string, string> | null = data.marker?.images ?? null;
+        const aadharPhoto: { base64: string; mimeType: string } | null =
+          data.aadhar_photo ?? null;
         onComplete({
           status: "complete",
           requestId,
           sections: data.structured?.sections ?? [],
           images: markerImages,
+          aadharPhoto,
           error: null,
         });
         return;
@@ -343,8 +349,8 @@ function DocUploadCard({
 
   const busy = state.status === "uploading" || state.status === "processing";
   const hasResult = state.status === "complete" && state.sections.length > 0;
-  const photoSrc = card.id === "aadhar" && state.images
-    ? Object.values(state.images)[0] ?? null
+  const photoSrc = card.id === "aadhar" && state.aadharPhoto
+    ? `data:${state.aadharPhoto.mimeType};base64,${state.aadharPhoto.base64}`
     : null;
 
   return (
@@ -368,7 +374,7 @@ function DocUploadCard({
             {photoSrc && (
               <div className="flex-shrink-0">
                 <img
-                  src={photoSrc.startsWith("data:") ? photoSrc : `data:image/jpeg;base64,${photoSrc}`}
+                  src={photoSrc}
                   alt="Aadhaar photo"
                   className="w-14 h-16 object-cover rounded-md border border-border shadow-sm"
                 />
@@ -476,8 +482,8 @@ function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, Extracti
           {cards.map(card => {
             const Icon = card.icon;
             const state = docStates[card.id];
-            const photoSrc = card.id === "aadhar" && state.images
-              ? Object.values(state.images)[0] ?? null : null;
+            const photoSrc = card.id === "aadhar" && state.aadharPhoto
+              ? `data:${state.aadharPhoto.mimeType};base64,${state.aadharPhoto.base64}` : null;
             return (
               <div key={card.id}>
                 <div className={`flex items-center gap-2 mb-2 p-2 rounded-lg ${card.bgColor}`}>
@@ -493,7 +499,7 @@ function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, Extracti
                 {photoSrc && (
                   <div className="mb-2 flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <img
-                      src={photoSrc.startsWith("data:") ? photoSrc : `data:image/jpeg;base64,${photoSrc}`}
+                      src={photoSrc}
                       alt="Aadhaar profile photo"
                       className="w-20 h-24 object-cover rounded-md border-2 border-white shadow-md"
                     />
@@ -527,8 +533,8 @@ function FarmerProfileCard({
   approved: boolean;
 }) {
   const filledCount = Object.values(profile).filter(Boolean).length;
-  const photoSrc = docStates["aadhar"]?.images
-    ? Object.values(docStates["aadhar"].images)[0] ?? null
+  const photoSrc = docStates["aadhar"]?.aadharPhoto
+    ? `data:${docStates["aadhar"].aadharPhoto.mimeType};base64,${docStates["aadhar"].aadharPhoto.base64}`
     : null;
 
   return (
@@ -537,7 +543,7 @@ function FarmerProfileCard({
         <div className="flex items-center gap-3">
           {photoSrc ? (
             <img
-              src={photoSrc.startsWith("data:") ? photoSrc : `data:image/jpeg;base64,${photoSrc}`}
+              src={photoSrc}
               alt="Farmer photo"
               className="w-12 h-14 object-cover rounded-lg border-2 border-white shadow-md"
             />

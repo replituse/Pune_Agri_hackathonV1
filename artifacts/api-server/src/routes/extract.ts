@@ -11,7 +11,7 @@ import {
 } from "../lib/document-types";
 import { getDb } from "../lib/mongo";
 import { logger } from "../lib/logger";
-import { mapExtractionToSection } from "../lib/profiles";
+import { mapExtractionToSection, pickAadhaarPortrait } from "../lib/profiles";
 
 const router: IRouter = Router();
 
@@ -494,6 +494,13 @@ router.get("/extract/:requestId", async (req, res): Promise<void> => {
     logger.warn({ err: persisted.error, phone: meta.profilePhone }, "Profile save failed");
   }
 
+  // For Aadhaar documents, pick the portrait server-side and include it
+  // directly so the frontend never has to guess which image is the face.
+  const aadharPhoto =
+    docDef.id === "aadhar" && marker
+      ? pickAadhaarPortrait(marker)
+      : null;
+
   res.json({
     status: "complete",
     document_type: docDef.id,
@@ -504,6 +511,7 @@ router.get("/extract/:requestId", async (req, res): Promise<void> => {
       ? { sections: structured.sections, empty: structured.empty }
       : null,
     marker,
+    aadhar_photo: aadharPhoto,
     profile: meta.profilePhone
       ? {
           phone: meta.profilePhone,

@@ -1147,3 +1147,24 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
   }
   return out as T;
 }
+
+/**
+ * Exported helper: given raw Datalab Marker output, pick the cardholder's
+ * portrait photo using the full multi-strategy algorithm (block tree captions,
+ * img alt attributes, windowed text search, JPEG/PNG format prior).
+ *
+ * Returns `{ base64, mimeType }` of the best-matching image, or null.
+ * This is used by the extract route to attach the portrait directly in the
+ * API response so the frontend never has to guess which image is the face.
+ */
+export function pickAadhaarPortrait(marker: {
+  images: Record<string, string> | null | undefined;
+  markdown?: string | null;
+  html?: string | null;
+  json?: unknown;
+} | null | undefined): { base64: string; mimeType: string } | null {
+  if (!marker) return null;
+  const images = normalizeImages(marker.images);
+  const portrait = pickPortrait(images, marker.markdown, marker.html, marker.json);
+  return portrait ?? null;
+}
