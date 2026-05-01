@@ -138,6 +138,8 @@ export interface FarmerProfile {
   accountOpeningDate: string;
   customerIdCif: string;
   nomineeRelationship: string;
+  bankHolderName: string;
+  bankCustomerAddress: string;
   email: string;
 }
 
@@ -148,7 +150,7 @@ const EMPTY_PROFILE: FarmerProfile = {
   crop: "", surveyNumber: "",
   bankName: "", branchName: "", branchAddress: "", ifsc: "", micrCode: "",
   bankAccount: "", accountType: "", accountOpeningDate: "", customerIdCif: "",
-  nomineeRelationship: "", email: "",
+  nomineeRelationship: "", bankHolderName: "", bankCustomerAddress: "", email: "",
 };
 
 function sleep(ms: number) {
@@ -235,15 +237,14 @@ function extractProfileFromStates(
   pick(["issue_date"], "issueDate", ["aadhar"]);
   pick(["enrolment_number", "enrolment_no"], "enrolmentNumber", ["aadhar"]);
 
-  // --- Bank Passbook only ---
+  // --- Bank Passbook only (all fields go to their own dedicated keys) ---
   pick(["bank_name"], "bankName", ["bank_passbook"]);
   pick(["branch_name"], "branchName", ["bank_passbook"]);
   pick(["branch_address"], "branchAddress", ["bank_passbook"]);
   pick(["ifsc_code", "ifsc"], "ifsc", ["bank_passbook"]);
   pick(["micr_code", "micr"], "micrCode", ["bank_passbook"]);
-  pick(["account_holder_name"], "name", ["bank_passbook"]); // fallback if no Aadhaar
-  pick(["mobile_number", "mobile"], "mobile", ["bank_passbook"]); // fallback if no Aadhaar
-  pick(["address"], "address", ["bank_passbook"]); // fallback if no Aadhaar
+  pick(["account_holder_name"], "bankHolderName", ["bank_passbook"]);
+  pick(["address"], "bankCustomerAddress", ["bank_passbook"]);
   pick(["account_number"], "bankAccount", ["bank_passbook"]);
   pick(["account_type"], "accountType", ["bank_passbook"]);
   pick(["opening_date"], "accountOpeningDate", ["bank_passbook"]);
@@ -539,8 +540,10 @@ const PROFILE_SECTIONS: {
       {
         label: "Account Holder",
         fields: [
+          { key: "bankHolderName", label: "Account Holder Name", placeholder: "Full name of account holder", span: true },
           { key: "nomineeRelationship", label: "Nominee Relationship", placeholder: "e.g. S/D/H/o" },
           { key: "email", label: "Email Address", placeholder: "e.g. name@bank.in" },
+          { key: "bankCustomerAddress", label: "Customer Address", placeholder: "Customer's mailing address", span: true },
         ],
       },
       {
