@@ -470,6 +470,7 @@ function DocUploadCard({
 }
 
 type ProfileField = { key: keyof FarmerProfile; label: string; placeholder: string; span?: boolean };
+type ProfileSubsection = { label: string; fields: ProfileField[] };
 
 const PROFILE_SECTIONS: {
   id: string;
@@ -477,47 +478,80 @@ const PROFILE_SECTIONS: {
   docIds: DocTypeId[];
   headerColor: string;
   headerBg: string;
-  fields: ProfileField[];
+  subHeaderColor: string;
+  subsections: ProfileSubsection[];
 }[] = [
   {
     id: "identity",
-    label: "Aadhaar Card — Identity",
+    label: "Aadhaar Card",
     docIds: ["aadhar"],
     headerColor: "text-violet-700",
     headerBg: "bg-violet-50 border-violet-200",
-    fields: [
-      { key: "name", label: "Full Name", placeholder: "Farmer's full name", span: true },
-      { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX XXXX XXXX" },
-      { key: "vid", label: "Virtual ID (VID)", placeholder: "16-digit Virtual ID" },
-      { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
-      { key: "gender", label: "Gender", placeholder: "Male / Female" },
-      { key: "fathersName", label: "Father's / Husband's Name", placeholder: "Guardian name" },
-      { key: "mobile", label: "Mobile Number", placeholder: "10-digit number" },
-      { key: "address", label: "Address", placeholder: "Residential address", span: true },
-      { key: "pincode", label: "PIN Code", placeholder: "6-digit PIN" },
-      { key: "state", label: "State", placeholder: "State name" },
-      { key: "issueDate", label: "Aadhaar Issue Date", placeholder: "DD/MM/YYYY" },
-      { key: "enrolmentNumber", label: "Enrolment No.", placeholder: "e.g. 0855/04021/00568" },
+    subHeaderColor: "text-violet-500",
+    subsections: [
+      {
+        label: "Identity",
+        fields: [
+          { key: "name", label: "Full Name", placeholder: "Farmer's full name", span: true },
+          { key: "gender", label: "Gender", placeholder: "Male / Female" },
+          { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
+          { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX XXXX XXXX" },
+          { key: "vid", label: "Virtual ID (VID)", placeholder: "16-digit Virtual ID" },
+          { key: "fathersName", label: "Father's / Husband's / Guardian's Name", placeholder: "Guardian name", span: true },
+        ],
+      },
+      {
+        label: "Address",
+        fields: [
+          { key: "address", label: "Address", placeholder: "Residential address", span: true },
+          { key: "pincode", label: "PIN Code", placeholder: "6-digit PIN" },
+          { key: "state", label: "State", placeholder: "State name" },
+        ],
+      },
+      {
+        label: "Document",
+        fields: [
+          { key: "issueDate", label: "Issue Date", placeholder: "DD/MM/YYYY" },
+          { key: "mobile", label: "Mobile Number", placeholder: "10-digit number" },
+          { key: "enrolmentNumber", label: "Enrolment No.", placeholder: "e.g. 0855/04021/00568" },
+        ],
+      },
     ],
   },
   {
     id: "bank",
-    label: "Bank Passbook — Account Details",
+    label: "Bank Passbook",
     docIds: ["bank_passbook"],
     headerColor: "text-blue-700",
     headerBg: "bg-blue-50 border-blue-200",
-    fields: [
-      { key: "bankName", label: "Bank Name", placeholder: "e.g. State Bank of India" },
-      { key: "branchName", label: "Branch Name", placeholder: "e.g. Samta Nagar Thane" },
-      { key: "branchAddress", label: "Branch Address", placeholder: "Branch full address", span: true },
-      { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0013035" },
-      { key: "micrCode", label: "MICR Code", placeholder: "9-digit MICR code" },
-      { key: "bankAccount", label: "Account Number", placeholder: "Account number" },
-      { key: "accountType", label: "Account Type", placeholder: "e.g. Regular Savings Bank Account", span: true },
-      { key: "accountOpeningDate", label: "Account Opening Date", placeholder: "DD/MM/YYYY" },
-      { key: "customerIdCif", label: "Customer ID (CIF)", placeholder: "CIF number" },
-      { key: "nomineeRelationship", label: "Nominee Relationship", placeholder: "e.g. S/D/H/o" },
-      { key: "email", label: "Email Address", placeholder: "e.g. name@bank.in" },
+    subHeaderColor: "text-blue-500",
+    subsections: [
+      {
+        label: "Bank & Branch",
+        fields: [
+          { key: "bankName", label: "Bank Name", placeholder: "e.g. State Bank of India" },
+          { key: "branchName", label: "Branch Name", placeholder: "e.g. Samta Nagar Thane" },
+          { key: "branchAddress", label: "Branch Address", placeholder: "Branch full address", span: true },
+          { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0013035" },
+          { key: "micrCode", label: "MICR Code", placeholder: "9-digit MICR code" },
+        ],
+      },
+      {
+        label: "Account Holder",
+        fields: [
+          { key: "nomineeRelationship", label: "Nominee Relationship", placeholder: "e.g. S/D/H/o" },
+          { key: "email", label: "Email Address", placeholder: "e.g. name@bank.in" },
+        ],
+      },
+      {
+        label: "Account Details",
+        fields: [
+          { key: "bankAccount", label: "Account Number", placeholder: "Account number" },
+          { key: "accountType", label: "Account Type", placeholder: "e.g. Regular Savings Bank Account", span: true },
+          { key: "customerIdCif", label: "Customer ID (CIF)", placeholder: "CIF number" },
+          { key: "accountOpeningDate", label: "Account Opening Date", placeholder: "DD/MM/YYYY" },
+        ],
+      },
     ],
   },
   {
@@ -526,18 +560,29 @@ const PROFILE_SECTIONS: {
     docIds: ["form7", "form8a", "form12"],
     headerColor: "text-amber-700",
     headerBg: "bg-amber-50 border-amber-200",
-    fields: [
-      { key: "village", label: "Village / Gram", placeholder: "Village name" },
-      { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
-      { key: "district", label: "District", placeholder: "District name" },
-      { key: "land", label: "Land Area", placeholder: "e.g. 3.5 hectares" },
-      { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
-      { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
+    subHeaderColor: "text-amber-500",
+    subsections: [
+      {
+        label: "Location",
+        fields: [
+          { key: "village", label: "Village / Gram", placeholder: "Village name" },
+          { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
+          { key: "district", label: "District", placeholder: "District name" },
+        ],
+      },
+      {
+        label: "Land & Crop",
+        fields: [
+          { key: "land", label: "Land Area", placeholder: "e.g. 3.5 hectares" },
+          { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
+          { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
+        ],
+      },
     ],
   },
 ];
 
-const ALL_PROFILE_FIELDS = PROFILE_SECTIONS.flatMap(s => s.fields);
+const ALL_PROFILE_FIELDS = PROFILE_SECTIONS.flatMap(s => s.subsections.flatMap(sub => sub.fields));
 
 function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, ExtractionState> }) {
   const [open, setOpen] = useState(false);
@@ -648,28 +693,38 @@ function FarmerProfileCard({
       <div className="p-5 space-y-6">
         {PROFILE_SECTIONS.map((section) => {
           const isExtracted = section.docIds.some(id => docStates[id]?.status === "complete");
-          const sectionFilled = section.fields.filter(f => Boolean(profile[f.key])).length;
+          const allFields = section.subsections.flatMap(sub => sub.fields);
+          const sectionFilled = allFields.filter(f => Boolean(profile[f.key])).length;
           return (
             <div key={section.id}>
-              <div className={`flex items-center justify-between px-3 py-2 rounded-lg border mb-3 ${section.headerBg}`}>
-                <span className={`text-xs font-semibold tracking-wide uppercase ${section.headerColor}`}>
+              <div className={`flex items-center justify-between px-3 py-2 rounded-lg border mb-4 ${section.headerBg}`}>
+                <span className={`text-xs font-bold tracking-wide uppercase ${section.headerColor}`}>
                   {section.label}
                 </span>
                 <span className={`text-xs font-medium ${section.headerColor} opacity-70`}>
-                  {isExtracted ? `${sectionFilled} / ${section.fields.length} filled` : "Upload document to extract"}
+                  {isExtracted ? `${sectionFilled} / ${allFields.length} filled` : "Upload document to extract"}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {section.fields.map(({ key, label, placeholder, span }) => (
-                  <div key={key} className={span ? "sm:col-span-2" : ""}>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
-                    <input
-                      type="text"
-                      value={profile[key]}
-                      onChange={(e) => onChange(key, e.target.value)}
-                      placeholder={placeholder}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-                    />
+              <div className="space-y-5">
+                {section.subsections.map((sub) => (
+                  <div key={sub.label}>
+                    <p className={`text-[10px] font-semibold tracking-widest uppercase mb-2 ${section.subHeaderColor}`}>
+                      {sub.label}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {sub.fields.map(({ key, label, placeholder, span }) => (
+                        <div key={key} className={span ? "sm:col-span-2" : ""}>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+                          <input
+                            type="text"
+                            value={profile[key]}
+                            onChange={(e) => onChange(key, e.target.value)}
+                            placeholder={placeholder}
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
