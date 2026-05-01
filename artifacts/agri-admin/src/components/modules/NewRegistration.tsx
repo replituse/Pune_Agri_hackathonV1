@@ -216,10 +216,16 @@ async function pollUntilDone(
     attempts++;
     try {
       const res = await fetch(`${BASE_URL}/api/extract/${requestId}`);
-      const data = await res.json();
-      if (!res.ok) { onError(data?.error ?? `Server error ${res.status}`); return; }
+      let data: Record<string, unknown>;
+      try {
+        data = await res.json();
+      } catch {
+        onError("API server is unavailable. Please try again in a moment.");
+        return;
+      }
+      if (!res.ok) { onError((data?.error as string) ?? `Server error ${res.status}`); return; }
       if (data.status === "processing") continue;
-      if (data.status === "error") { onError(data.error ?? "Extraction failed."); return; }
+      if (data.status === "error") { onError((data.error as string) ?? "Extraction failed."); return; }
       if (data.status === "complete") {
         const markerImages: Record<string, string> | null = data.marker?.images ?? null;
         const aadharPhoto: { base64: string; mimeType: string } | null =
@@ -581,12 +587,22 @@ function DocUploadCard({
     body.append("mode", "accurate");
     try {
       const res = await fetch(`${BASE_URL}/api/extract`, { method: "POST", body });
-      const data = await res.json();
-      if (!res.ok) {
-        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: data?.error ?? `Upload failed (${res.status})` });
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = await res.json();
+      } catch {
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "API server is unavailable. Please try again in a moment." });
         return;
       }
-      const reqId: string = data.request_id;
+      if (!res.ok) {
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: (data?.error as string) ?? `Upload failed (${res.status})` });
+        return;
+      }
+      const reqId = data?.request_id as string;
+      if (!reqId) {
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "Server did not return a request ID." });
+        return;
+      }
       onStateChange((prev: ExtractionState) => ({ ...prev, status: "processing", requestId: reqId }));
       setExpanded(true);
       pollUntilDone(
