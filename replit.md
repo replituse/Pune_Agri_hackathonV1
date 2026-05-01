@@ -43,14 +43,22 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ### API Server (`artifacts/api-server`)
 - **Type**: Express API server
+- **Port**: 8000 (changed from 8081; Vite proxy updated to match)
 - **Preview path**: `/api`
 - **New Registration OCR routes**:
   - `GET /api/document-types` — list all 5 supported document types
   - `POST /api/extract` — upload file (multipart: `file`, `document_type`, `mode`, optional `profile_phone`); fans out to Datalab Extract + Marker pipelines; returns `request_id`
-  - `GET /api/extract/:requestId` — poll for extraction result; when complete, returns `structured` fields + auto-saves to MongoDB if `profile_phone` was provided
+  - `GET /api/extract/:requestId` — poll for extraction result; when complete, returns `structured` fields, `raw_tables` (tables extracted from Marker JSON), `text_blocks` (free-form text from Marker JSON), and auto-saves to MongoDB if `profile_phone` was provided
 - **MongoDB**: Connected to Atlas cluster (`apnaapp` DB, `users` collection); auto-saves extracted document data as sub-documents keyed by section (`aadhar`, `passbook`, `form7`, `form12`, `form8a`)
 - **Secrets required**: `DATALAB_API_KEY`, `MONGODB_URI`
 - **New deps**: `mongodb`, `multer`, `@types/multer`
+- **Workflow**: Uses pre-built `dist/index.mjs` directly (no build step on startup) for fast port detection. Run `pnpm run build` in `artifacts/api-server` after code changes, then restart the workflow.
+
+## Port Routing
+- **Port 5000**: Vite dev server (agri-admin frontend) — webview workflow
+- **Port 8000**: API server (Express) — console workflow
+- **Port 18593**: Proxy server (`scripts/redirect-8080.mjs`) maps external port 80 → localhost:5000 so the standard domain URL works
+- **Port 8080**: Redirect server → standard domain URL
 
 ### Canvas / Mockup Sandbox (`artifacts/mockup-sandbox`)
 - **Type**: Design mockup sandbox (pre-existing scaffold)
