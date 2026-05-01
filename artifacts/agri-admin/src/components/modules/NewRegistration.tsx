@@ -244,7 +244,7 @@ function extractProfileFromStates(
   pick(["ifsc_code", "ifsc"], "ifsc", ["bank_passbook"]);
   pick(["micr_code", "micr"], "micrCode", ["bank_passbook"]);
   pick(["account_holder_name"], "bankHolderName", ["bank_passbook"]);
-  pick(["address"], "bankCustomerAddress", ["bank_passbook"]);
+  pick(["customer address", "customer_address"], "bankCustomerAddress", ["bank_passbook"]);
   pick(["account_number"], "bankAccount", ["bank_passbook"]);
   pick(["account_type"], "accountType", ["bank_passbook"]);
   pick(["opening_date"], "accountOpeningDate", ["bank_passbook"]);
