@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload, CheckCircle2, XCircle, Loader2, FileText,
   ChevronDown, ChevronUp, User, Landmark, FileStack, Sprout,
-  ClipboardCheck, UserCheck, Pencil, ThumbsUp,
+  ClipboardCheck, UserCheck, Pencil, ThumbsUp, Camera,
 } from "lucide-react";
 import { addApprovedFarmer, nextFarmerId } from "@/data/farmerStore";
 
@@ -18,6 +18,7 @@ interface DocCard {
   description: string;
   icon: React.FC<{ className?: string }>;
   color: string;
+  bgColor: string;
 }
 
 const DOC_CARDS: DocCard[] = [
@@ -28,6 +29,7 @@ const DOC_CARDS: DocCard[] = [
     description: "Maharashtra 7/12 — अधिकार अभिलेख (Rights Register)",
     icon: FileStack,
     color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
   },
   {
     id: "form12",
@@ -36,6 +38,7 @@ const DOC_CARDS: DocCard[] = [
     description: "Maharashtra 7/12 — पीक पाहणी (Crop Inspection Register)",
     icon: Sprout,
     color: "text-green-600",
+    bgColor: "bg-green-50",
   },
   {
     id: "form8a",
@@ -44,6 +47,7 @@ const DOC_CARDS: DocCard[] = [
     description: "Maharashtra — धारण जमिनींची नोंदवही (Holding Register)",
     icon: ClipboardCheck,
     color: "text-teal-600",
+    bgColor: "bg-teal-50",
   },
   {
     id: "aadhar",
@@ -52,6 +56,7 @@ const DOC_CARDS: DocCard[] = [
     description: "UIDAI Aadhaar identity card",
     icon: User,
     color: "text-blue-600",
+    bgColor: "bg-blue-50",
   },
   {
     id: "bank_passbook",
@@ -60,6 +65,7 @@ const DOC_CARDS: DocCard[] = [
     description: "Bank account passbook front page",
     icon: Landmark,
     color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
   },
 ];
 
@@ -87,6 +93,7 @@ interface ExtractionState {
   filename: string;
   requestId: string | null;
   sections: SectionData[];
+  images: Record<string, string> | null;
   error: string | null;
 }
 
@@ -95,29 +102,36 @@ const DEFAULT_STATE: ExtractionState = {
   filename: "",
   requestId: null,
   sections: [],
+  images: null,
   error: null,
 };
 
 export interface FarmerProfile {
   name: string;
   aadhaar: string;
+  dob: string;
+  gender: string;
+  fathersName: string;
+  address: string;
+  pincode: string;
+  state: string;
+  mobile: string;
   village: string;
   district: string;
+  taluka: string;
   land: string;
   crop: string;
   surveyNumber: string;
+  bankName: string;
   bankAccount: string;
+  ifsc: string;
 }
 
 const EMPTY_PROFILE: FarmerProfile = {
-  name: "",
-  aadhaar: "",
-  village: "",
-  district: "",
-  land: "",
-  crop: "",
-  surveyNumber: "",
-  bankAccount: "",
+  name: "", aadhaar: "", dob: "", gender: "", fathersName: "",
+  address: "", pincode: "", state: "", mobile: "",
+  village: "", district: "", taluka: "", land: "", crop: "",
+  surveyNumber: "", bankName: "", bankAccount: "", ifsc: "",
 };
 
 function sleep(ms: number) {
@@ -135,26 +149,19 @@ async function pollUntilDone(
   while (attempts < maxAttempts) {
     await sleep(3000);
     attempts++;
-
     try {
       const res = await fetch(`${BASE_URL}/api/extract/${requestId}`);
       const data = await res.json();
-
-      if (!res.ok) {
-        onError(data?.error ?? `Server error ${res.status}`);
-        return;
-      }
-
+      if (!res.ok) { onError(data?.error ?? `Server error ${res.status}`); return; }
       if (data.status === "processing") continue;
-      if (data.status === "error") {
-        onError(data.error ?? "Extraction failed.");
-        return;
-      }
+      if (data.status === "error") { onError(data.error ?? "Extraction failed."); return; }
       if (data.status === "complete") {
+        const markerImages: Record<string, string> | null = data.marker?.images ?? null;
         onComplete({
           status: "complete",
           requestId,
           sections: data.structured?.sections ?? [],
+          images: markerImages,
           error: null,
         });
         return;
@@ -164,23 +171,25 @@ async function pollUntilDone(
       return;
     }
   }
-
   onError("Timed out waiting for extraction result.");
 }
 
 function fieldMatch(field: FieldRow, keywords: string[]): boolean {
-  const haystack = `${field.key} ${field.label}`.toLowerCase();
-  return keywords.some((kw) => haystack.includes(kw));
+  const h = `${field.key} ${field.label}`.toLowerCase();
+  return keywords.some((kw) => h.includes(kw));
 }
 
-function extractProfileFromSections(
+function extractProfileFromStates(
   allStates: Record<DocTypeId, ExtractionState>,
 ): Partial<FarmerProfile> {
   const out: Partial<FarmerProfile> = {};
 
-  const pick = (keywords: string[], field: keyof FarmerProfile) => {
+  const pick = (keywords: string[], field: keyof FarmerProfile, priority?: DocTypeId[]) => {
     if (out[field]) return;
-    for (const docId of Object.keys(allStates) as DocTypeId[]) {
+    const order = priority
+      ? [...priority, ...Object.keys(allStates).filter(k => !priority.includes(k as DocTypeId)) as DocTypeId[]]
+      : Object.keys(allStates) as DocTypeId[];
+    for (const docId of order) {
       const state = allStates[docId];
       if (state.status !== "complete") continue;
       for (const sec of state.sections) {
@@ -194,14 +203,24 @@ function extractProfileFromSections(
     }
   };
 
-  pick(["name", "owner", "holder", "applicant", "farmer"], "name");
-  pick(["aadhaar", "uid", "aadhar", "uidai", "identity"], "aadhaar");
-  pick(["village", "gram", "गाव", "taluka"], "village");
-  pick(["district", "jilha", "जिल्हा"], "district");
-  pick(["area", "land", "holding", "acr", "hect", "क्षेत्र"], "land");
-  pick(["crop", "पीक", "cultivation", "season crop"], "crop");
-  pick(["survey", "gat", "plot", "khata", "सर्वे"], "surveyNumber");
-  pick(["account", "bank", "acc no", "खाते"], "bankAccount");
+  pick(["full_name", "name", "owner", "holder", "applicant", "account_holder"], "name", ["aadhar", "bank_passbook"]);
+  pick(["aadhaar_number", "aadhaar", "uid", "aadhar", "uidai"], "aadhaar", ["aadhar"]);
+  pick(["date_of_birth", "dob", "birth"], "dob", ["aadhar"]);
+  pick(["gender"], "gender", ["aadhar"]);
+  pick(["father", "husband", "guardian", "care_of"], "fathersName", ["aadhar"]);
+  pick(["address", "customer address"], "address", ["aadhar", "bank_passbook"]);
+  pick(["pincode", "pin code", "pin_code", "postal"], "pincode", ["aadhar"]);
+  pick(["state"], "state", ["aadhar"]);
+  pick(["mobile", "phone", "contact"], "mobile", ["aadhar", "bank_passbook"]);
+  pick(["village", "gram", "गाव"], "village", ["form7", "form8a", "form12"]);
+  pick(["district", "jilha", "जिल्हा"], "district", ["form7", "form8a"]);
+  pick(["taluka"], "taluka", ["form7", "form8a"]);
+  pick(["area", "land", "holding", "total_area", "क्षेत्र"], "land", ["form8a", "form7"]);
+  pick(["crop_name", "crop", "पीक"], "crop", ["form12"]);
+  pick(["survey", "gat", "plot", "khata", "सर्वे"], "surveyNumber", ["form7", "form8a"]);
+  pick(["bank_name", "bank name"], "bankName", ["bank_passbook"]);
+  pick(["account_number", "account number", "acc no", "खाते"], "bankAccount", ["bank_passbook"]);
+  pick(["ifsc"], "ifsc", ["bank_passbook"]);
 
   return out;
 }
@@ -250,17 +269,13 @@ function FieldsTable({ sections }: { sections: SectionData[] }) {
                 <table className="min-w-full text-xs">
                   <thead className="bg-muted/40">
                     <tr>
-                      {tbl.columns.map(c => (
-                        <th key={c.key} className="px-3 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">{c.label}</th>
-                      ))}
+                      {tbl.columns.map(c => <th key={c.key} className="px-3 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">{c.label}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {tbl.rows.map((row, i) => (
                       <tr key={i} className="border-t border-border">
-                        {tbl.columns.map(c => (
-                          <td key={c.key} className="px-3 py-1.5 text-foreground">{row.values[c.key] ?? "—"}</td>
-                        ))}
+                        {tbl.columns.map(c => <td key={c.key} className="px-3 py-1.5 text-foreground">{row.values[c.key] ?? "—"}</td>)}
                       </tr>
                     ))}
                   </tbody>
@@ -289,50 +304,37 @@ function DocUploadCard({
   const fileRef = useRef<HTMLInputElement>(null);
   const Icon = card.icon;
 
-  const handleFile = useCallback(
-    async (file: File) => {
-      onStateChange({ ...DEFAULT_STATE, status: "uploading", filename: file.name });
-
-      const body = new FormData();
-      body.append("file", file);
-      body.append("document_type", card.id);
-      body.append("mode", "accurate");
-
-      try {
-        const res = await fetch(`${BASE_URL}/api/extract`, { method: "POST", body });
-        const data = await res.json();
-
-        if (!res.ok) {
-          onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: data?.error ?? `Upload failed (${res.status})` });
-          return;
-        }
-
-        const reqId: string = data.request_id;
-        onStateChange((prev: ExtractionState) => ({ ...prev, status: "processing", requestId: reqId }));
-        setExpanded(true);
-
-        pollUntilDone(
-          reqId,
-          (result) => {
-            onStateChange((prev: ExtractionState) => ({ ...prev, ...result }));
-          },
-          (msg) => {
-            onStateChange((prev: ExtractionState) => ({ ...prev, status: "error", error: msg }));
-          },
-        );
-      } catch (err) {
-        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: err instanceof Error ? err.message : "Network error" });
+  const handleFile = useCallback(async (file: File) => {
+    onStateChange({ ...DEFAULT_STATE, status: "uploading", filename: file.name });
+    const body = new FormData();
+    body.append("file", file);
+    body.append("document_type", card.id);
+    body.append("mode", "accurate");
+    try {
+      const res = await fetch(`${BASE_URL}/api/extract`, { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) {
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: data?.error ?? `Upload failed (${res.status})` });
+        return;
       }
-    },
-    [card.id, onStateChange],
-  );
+      const reqId: string = data.request_id;
+      onStateChange((prev: ExtractionState) => ({ ...prev, status: "processing", requestId: reqId }));
+      setExpanded(true);
+      pollUntilDone(
+        reqId,
+        (result) => { onStateChange((prev: ExtractionState) => ({ ...prev, ...result })); },
+        (msg) => { onStateChange((prev: ExtractionState) => ({ ...prev, status: "error", error: msg })); },
+      );
+    } catch (err) {
+      onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: err instanceof Error ? err.message : "Network error" });
+    }
+  }, [card.id, onStateChange]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
     e.target.value = "";
   };
-
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
@@ -341,6 +343,9 @@ function DocUploadCard({
 
   const busy = state.status === "uploading" || state.status === "processing";
   const hasResult = state.status === "complete" && state.sections.length > 0;
+  const photoSrc = card.id === "aadhar" && state.images
+    ? Object.values(state.images)[0] ?? null
+    : null;
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -350,7 +355,7 @@ function DocUploadCard({
             <div className={`mt-0.5 flex-shrink-0 ${card.color}`}>
               <Icon className="h-5 w-5" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-semibold text-sm text-foreground leading-tight">{card.label}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{card.description}</p>
               {state.filename && (
@@ -360,6 +365,15 @@ function DocUploadCard({
                 </p>
               )}
             </div>
+            {photoSrc && (
+              <div className="flex-shrink-0">
+                <img
+                  src={photoSrc.startsWith("data:") ? photoSrc : `data:image/jpeg;base64,${photoSrc}`}
+                  alt="Aadhaar photo"
+                  className="w-14 h-16 object-cover rounded-md border border-border shadow-sm"
+                />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <StatusBadge status={state.status} />
@@ -418,40 +432,125 @@ function DocUploadCard({
   );
 }
 
-const PROFILE_FIELDS: { key: keyof FarmerProfile; label: string; placeholder: string }[] = [
-  { key: "name", label: "Full Name", placeholder: "Farmer's full name" },
-  { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX-XXXX-XXXX" },
-  { key: "village", label: "Village / Taluka", placeholder: "Village name" },
+const CORE_PROFILE_FIELDS: { key: keyof FarmerProfile; label: string; placeholder: string; span?: boolean }[] = [
+  { key: "name", label: "Full Name", placeholder: "Farmer's full name", span: true },
+  { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX XXXX XXXX" },
+  { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
+  { key: "gender", label: "Gender", placeholder: "Male / Female" },
+  { key: "fathersName", label: "Father's / Husband's Name", placeholder: "Guardian name" },
+  { key: "mobile", label: "Mobile Number", placeholder: "10-digit number" },
+  { key: "address", label: "Address", placeholder: "Residential address", span: true },
+  { key: "pincode", label: "PIN Code", placeholder: "6-digit PIN" },
+  { key: "state", label: "State", placeholder: "State name" },
+  { key: "village", label: "Village / Gram", placeholder: "Village name" },
+  { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
   { key: "district", label: "District", placeholder: "District name" },
-  { key: "land", label: "Land Area (acres)", placeholder: "e.g. 3.5" },
+  { key: "land", label: "Land Area", placeholder: "e.g. 3.5 hectares" },
   { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
   { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
+  { key: "bankName", label: "Bank Name", placeholder: "e.g. State Bank of India" },
   { key: "bankAccount", label: "Bank Account Number", placeholder: "Account number" },
+  { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0001234" },
 ];
 
+function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, ExtractionState> }) {
+  const [open, setOpen] = useState(false);
+  const cards = DOC_CARDS.filter(c => docStates[c.id].status === "complete" && docStates[c.id].sections.length > 0);
+  if (!cards.length) return null;
+
+  const totalFields = cards.reduce((sum, c) =>
+    sum + docStates[c.id].sections.reduce((s, sec) => s + sec.fields.filter(f => f.value && f.value !== "—").length, 0), 0
+  );
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/30 transition-colors"
+      >
+        <span>All Extracted Document Data <span className="text-muted-foreground font-normal ml-1">({totalFields} total fields from {cards.length} document{cards.length > 1 ? "s" : ""})</span></span>
+        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-5">
+          {cards.map(card => {
+            const Icon = card.icon;
+            const state = docStates[card.id];
+            const photoSrc = card.id === "aadhar" && state.images
+              ? Object.values(state.images)[0] ?? null : null;
+            return (
+              <div key={card.id}>
+                <div className={`flex items-center gap-2 mb-2 p-2 rounded-lg ${card.bgColor}`}>
+                  <Icon className={`h-4 w-4 ${card.color}`} />
+                  <span className={`text-xs font-semibold ${card.color}`}>{card.label}</span>
+                  {photoSrc && (
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <Camera className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="text-xs text-blue-600 font-medium">Photo extracted</span>
+                    </div>
+                  )}
+                </div>
+                {photoSrc && (
+                  <div className="mb-2 flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <img
+                      src={photoSrc.startsWith("data:") ? photoSrc : `data:image/jpeg;base64,${photoSrc}`}
+                      alt="Aadhaar profile photo"
+                      className="w-20 h-24 object-cover rounded-md border-2 border-white shadow-md"
+                    />
+                    <div>
+                      <p className="text-xs font-semibold text-blue-800">Profile Photo</p>
+                      <p className="text-xs text-blue-600 mt-0.5">Extracted from Aadhaar Card</p>
+                    </div>
+                  </div>
+                )}
+                <FieldsTable sections={state.sections} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FarmerProfileCard({
+  docStates,
   profile,
   onChange,
   onApprove,
   approved,
 }: {
+  docStates: Record<DocTypeId, ExtractionState>;
   profile: FarmerProfile;
   onChange: (field: keyof FarmerProfile, value: string) => void;
   onApprove: () => void;
   approved: boolean;
 }) {
   const filledCount = Object.values(profile).filter(Boolean).length;
+  const photoSrc = docStates["aadhar"]?.images
+    ? Object.values(docStates["aadhar"].images)[0] ?? null
+    : null;
 
   return (
     <div className="rounded-xl border-2 border-primary/30 bg-card shadow-md overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 bg-primary/5 border-b border-primary/20">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
-            <UserCheck className="h-5 w-5 text-primary" />
-          </div>
+        <div className="flex items-center gap-3">
+          {photoSrc ? (
+            <img
+              src={photoSrc.startsWith("data:") ? photoSrc : `data:image/jpeg;base64,${photoSrc}`}
+              alt="Farmer photo"
+              className="w-12 h-14 object-cover rounded-lg border-2 border-white shadow-md"
+            />
+          ) : (
+            <div className="w-12 h-14 rounded-lg bg-primary/15 flex items-center justify-center border-2 border-white shadow-md">
+              <UserCheck className="h-6 w-6 text-primary" />
+            </div>
+          )}
           <div>
-            <h3 className="font-semibold text-sm text-foreground">Auto-Built Farmer Profile</h3>
-            <p className="text-xs text-muted-foreground">{filledCount} of {PROFILE_FIELDS.length} fields filled · Verify and edit before approving</p>
+            <h3 className="font-semibold text-sm text-foreground">
+              {profile.name || "Auto-Built Farmer Profile"}
+            </h3>
+            <p className="text-xs text-muted-foreground">{filledCount} of {CORE_PROFILE_FIELDS.length} fields filled · Verify and edit before approving</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -460,10 +559,10 @@ function FarmerProfileCard({
         </div>
       </div>
 
-      <div className="p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-          {PROFILE_FIELDS.map(({ key, label, placeholder }) => (
-            <div key={key}>
+      <div className="p-5 space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {CORE_PROFILE_FIELDS.map(({ key, label, placeholder, span }) => (
+            <div key={key} className={span ? "sm:col-span-2" : ""}>
               <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
               <input
                 type="text"
@@ -475,6 +574,8 @@ function FarmerProfileCard({
             </div>
           ))}
         </div>
+
+        <AllExtractedData docStates={docStates} />
 
         {approved ? (
           <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium">
@@ -496,7 +597,6 @@ function FarmerProfileCard({
 }
 
 type DocStates = Record<DocTypeId, ExtractionState>;
-
 const INITIAL_DOC_STATES: DocStates = Object.fromEntries(
   DOC_CARDS.map((c) => [c.id, { ...DEFAULT_STATE }]),
 ) as DocStates;
@@ -510,20 +610,18 @@ export default function NewRegistration() {
 
   useEffect(() => {
     if (!anyExtracted) return;
-    const extracted = extractProfileFromSections(docStates);
+    const extracted = extractProfileFromStates(docStates);
     setProfile((prev) => {
       const next = { ...prev };
       (Object.keys(extracted) as (keyof FarmerProfile)[]).forEach((k) => {
-        if (!prev[k] && extracted[k]) {
-          next[k] = extracted[k]!;
-        }
+        if (!prev[k] && extracted[k]) next[k] = extracted[k]!;
       });
       return next;
     });
   }, [docStates, anyExtracted]);
 
   const handleStateChange = useCallback(
-    (docId: DocTypeId) => (updater: ExtractionState | ((s: ExtractionState) => ExtractionState)) => {
+    (docId: DocTypeId) => (updater: StateUpdater) => {
       setDocStates((prev) => ({
         ...prev,
         [docId]: typeof updater === "function" ? updater(prev[docId]) : updater,
@@ -540,7 +638,7 @@ export default function NewRegistration() {
     addApprovedFarmer({
       id: nextFarmerId(),
       name: profile.name || "Unknown Farmer",
-      village: profile.village || "—",
+      village: profile.village || profile.taluka || "—",
       district: profile.district || "—",
       land: parseFloat(profile.land) || 0,
       crop: profile.crop || "—",
@@ -572,6 +670,7 @@ export default function NewRegistration() {
 
       {anyExtracted && (
         <FarmerProfileCard
+          docStates={docStates}
           profile={profile}
           onChange={handleProfileChange}
           onApprove={handleApprove}
