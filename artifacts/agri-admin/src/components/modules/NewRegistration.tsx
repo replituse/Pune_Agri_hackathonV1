@@ -112,13 +112,16 @@ const DEFAULT_STATE: ExtractionState = {
 export interface FarmerProfile {
   name: string;
   aadhaar: string;
+  vid: string;
   dob: string;
   gender: string;
   fathersName: string;
+  mobile: string;
   address: string;
   pincode: string;
   state: string;
-  mobile: string;
+  issueDate: string;
+  enrolmentNumber: string;
   village: string;
   district: string;
   taluka: string;
@@ -131,10 +134,10 @@ export interface FarmerProfile {
 }
 
 const EMPTY_PROFILE: FarmerProfile = {
-  name: "", aadhaar: "", dob: "", gender: "", fathersName: "",
-  address: "", pincode: "", state: "", mobile: "",
-  village: "", district: "", taluka: "", land: "", crop: "",
-  surveyNumber: "", bankName: "", bankAccount: "", ifsc: "",
+  name: "", aadhaar: "", vid: "", dob: "", gender: "", fathersName: "",
+  mobile: "", address: "", pincode: "", state: "", issueDate: "",
+  enrolmentNumber: "", village: "", district: "", taluka: "", land: "",
+  crop: "", surveyNumber: "", bankName: "", bankAccount: "", ifsc: "",
 };
 
 function sleep(ms: number) {
@@ -211,13 +214,16 @@ function extractProfileFromStates(
 
   pick(["full_name", "name", "owner", "holder", "applicant", "account_holder"], "name", ["aadhar", "bank_passbook"]);
   pick(["aadhaar_number", "aadhaar", "uid", "aadhar", "uidai"], "aadhaar", ["aadhar"]);
+  pick(["vid", "virtual_id", "virtual id"], "vid", ["aadhar"]);
   pick(["date_of_birth", "dob", "birth"], "dob", ["aadhar"]);
   pick(["gender"], "gender", ["aadhar"]);
   pick(["father", "husband", "guardian", "care_of"], "fathersName", ["aadhar"]);
+  pick(["mobile", "phone", "contact"], "mobile", ["aadhar", "bank_passbook"]);
   pick(["address", "customer address"], "address", ["aadhar", "bank_passbook"]);
   pick(["pincode", "pin code", "pin_code", "postal"], "pincode", ["aadhar"]);
   pick(["state"], "state", ["aadhar"]);
-  pick(["mobile", "phone", "contact"], "mobile", ["aadhar", "bank_passbook"]);
+  pick(["issue_date", "issue date", "issued"], "issueDate", ["aadhar"]);
+  pick(["enrolment_number", "enrolment no", "enrolment"], "enrolmentNumber", ["aadhar"]);
   pick(["village", "gram", "गाव"], "village", ["form7", "form8a", "form12"]);
   pick(["district", "jilha", "जिल्हा"], "district", ["form7", "form8a"]);
   pick(["taluka"], "taluka", ["form7", "form8a"]);
@@ -441,6 +447,7 @@ function DocUploadCard({
 const CORE_PROFILE_FIELDS: { key: keyof FarmerProfile; label: string; placeholder: string; span?: boolean }[] = [
   { key: "name", label: "Full Name", placeholder: "Farmer's full name", span: true },
   { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX XXXX XXXX" },
+  { key: "vid", label: "Virtual ID (VID)", placeholder: "16-digit Virtual ID" },
   { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
   { key: "gender", label: "Gender", placeholder: "Male / Female" },
   { key: "fathersName", label: "Father's / Husband's Name", placeholder: "Guardian name" },
@@ -448,6 +455,8 @@ const CORE_PROFILE_FIELDS: { key: keyof FarmerProfile; label: string; placeholde
   { key: "address", label: "Address", placeholder: "Residential address", span: true },
   { key: "pincode", label: "PIN Code", placeholder: "6-digit PIN" },
   { key: "state", label: "State", placeholder: "State name" },
+  { key: "issueDate", label: "Aadhaar Issue Date", placeholder: "DD/MM/YYYY" },
+  { key: "enrolmentNumber", label: "Enrolment No.", placeholder: "e.g. 0855/04021/00568" },
   { key: "village", label: "Village / Gram", placeholder: "Village name" },
   { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
   { key: "district", label: "District", placeholder: "District name" },
