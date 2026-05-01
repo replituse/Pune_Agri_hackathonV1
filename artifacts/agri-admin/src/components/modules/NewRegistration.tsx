@@ -204,12 +204,10 @@ function extractProfileFromStates(
 ): Partial<FarmerProfile> {
   const out: Partial<FarmerProfile> = {};
 
-  const pick = (keywords: string[], field: keyof FarmerProfile, priority?: DocTypeId[]) => {
+  // Strict pick — only looks at the listed doc types, never falls back to others
+  const pick = (keywords: string[], field: keyof FarmerProfile, docTypes: DocTypeId[]) => {
     if (out[field]) return;
-    const order = priority
-      ? [...priority, ...Object.keys(allStates).filter(k => !priority.includes(k as DocTypeId)) as DocTypeId[]]
-      : Object.keys(allStates) as DocTypeId[];
-    for (const docId of order) {
+    for (const docId of docTypes) {
       const state = allStates[docId];
       if (state.status !== "complete") continue;
       for (const sec of state.sections) {
@@ -223,38 +221,43 @@ function extractProfileFromStates(
     }
   };
 
-  pick(["full_name", "name", "owner", "holder", "applicant", "account_holder", "account_holder_name"], "name", ["aadhar", "bank_passbook"]);
-  pick(["aadhaar_number", "aadhaar", "uid", "aadhar", "uidai"], "aadhaar", ["aadhar"]);
-  pick(["vid", "virtual_id", "virtual id"], "vid", ["aadhar"]);
-  pick(["date_of_birth", "dob", "birth"], "dob", ["aadhar"]);
+  // --- Aadhaar only ---
+  pick(["full_name", "name"], "name", ["aadhar"]);
+  pick(["aadhaar_number", "aadhaar", "uid", "uidai"], "aadhaar", ["aadhar"]);
+  pick(["vid", "virtual_id"], "vid", ["aadhar"]);
+  pick(["date_of_birth", "dob"], "dob", ["aadhar"]);
   pick(["gender"], "gender", ["aadhar"]);
   pick(["father", "husband", "guardian", "care_of"], "fathersName", ["aadhar"]);
-  pick(["mobile", "mobile_number", "phone", "contact"], "mobile", ["aadhar", "bank_passbook"]);
-  pick(["address", "customer address"], "address", ["aadhar", "bank_passbook"]);
-  pick(["pincode", "pin code", "pin_code", "postal"], "pincode", ["aadhar"]);
+  pick(["mobile_number", "mobile"], "mobile", ["aadhar"]);
+  pick(["address"], "address", ["aadhar"]);
+  pick(["pincode", "pin_code", "pin code", "postal"], "pincode", ["aadhar"]);
   pick(["state"], "state", ["aadhar"]);
-  pick(["issue_date", "issue date", "issued"], "issueDate", ["aadhar"]);
-  pick(["enrolment_number", "enrolment no", "enrolment"], "enrolmentNumber", ["aadhar"]);
-  pick(["bank_name", "bank"], "bankName", ["bank_passbook"]);
-  pick(["branch_name", "branch"], "branchName", ["bank_passbook"]);
+  pick(["issue_date"], "issueDate", ["aadhar"]);
+  pick(["enrolment_number", "enrolment_no"], "enrolmentNumber", ["aadhar"]);
+
+  // --- Bank Passbook only ---
+  pick(["bank_name"], "bankName", ["bank_passbook"]);
+  pick(["branch_name"], "branchName", ["bank_passbook"]);
   pick(["branch_address"], "branchAddress", ["bank_passbook"]);
-  pick(["ifsc", "ifsc_code"], "ifsc", ["bank_passbook"]);
-  pick(["micr", "micr_code"], "micrCode", ["bank_passbook"]);
-  pick(["account_number", "account_no", "acc_no"], "bankAccount", ["bank_passbook"]);
+  pick(["ifsc_code", "ifsc"], "ifsc", ["bank_passbook"]);
+  pick(["micr_code", "micr"], "micrCode", ["bank_passbook"]);
+  pick(["account_holder_name"], "name", ["bank_passbook"]); // fallback if no Aadhaar
+  pick(["mobile_number", "mobile"], "mobile", ["bank_passbook"]); // fallback if no Aadhaar
+  pick(["address"], "address", ["bank_passbook"]); // fallback if no Aadhaar
+  pick(["account_number"], "bankAccount", ["bank_passbook"]);
   pick(["account_type"], "accountType", ["bank_passbook"]);
-  pick(["account_opening_date", "opening_date", "date_of_opening"], "accountOpeningDate", ["bank_passbook"]);
-  pick(["customer_id", "cif", "cif_number", "customer_id_cif"], "customerIdCif", ["bank_passbook"]);
-  pick(["nominee_relationship", "relationship", "nominee"], "nomineeRelationship", ["bank_passbook"]);
-  pick(["email", "email_id", "e_mail"], "email", ["bank_passbook"]);
-  pick(["village", "gram", "गाव"], "village", ["form7", "form8a", "form12"]);
-  pick(["district", "jilha", "जिल्हा"], "district", ["form7", "form8a"]);
+  pick(["opening_date"], "accountOpeningDate", ["bank_passbook"]);
+  pick(["customer_id"], "customerIdCif", ["bank_passbook"]);
+  pick(["nominee_relationship"], "nomineeRelationship", ["bank_passbook"]);
+  pick(["email"], "email", ["bank_passbook"]);
+
+  // --- Land records (Form 7 / 8A / 12) only ---
+  pick(["village", "gram"], "village", ["form7", "form8a", "form12"]);
+  pick(["district", "jilha"], "district", ["form7", "form8a"]);
   pick(["taluka"], "taluka", ["form7", "form8a"]);
-  pick(["area", "land", "holding", "total_area", "क्षेत्र"], "land", ["form8a", "form7"]);
-  pick(["crop_name", "crop", "पीक"], "crop", ["form12"]);
-  pick(["survey", "gat", "plot", "khata", "सर्वे"], "surveyNumber", ["form7", "form8a"]);
-  pick(["bank_name", "bank name"], "bankName", ["bank_passbook"]);
-  pick(["account_number", "account number", "acc no", "खाते"], "bankAccount", ["bank_passbook"]);
-  pick(["ifsc"], "ifsc", ["bank_passbook"]);
+  pick(["area", "land", "holding", "total_area"], "land", ["form8a", "form7"]);
+  pick(["crop_name", "crop"], "crop", ["form12"]);
+  pick(["survey", "gat", "plot", "khata"], "surveyNumber", ["form7", "form8a"]);
 
   return out;
 }
@@ -466,37 +469,75 @@ function DocUploadCard({
   );
 }
 
-const CORE_PROFILE_FIELDS: { key: keyof FarmerProfile; label: string; placeholder: string; span?: boolean }[] = [
-  { key: "name", label: "Full Name", placeholder: "Farmer's full name", span: true },
-  { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX XXXX XXXX" },
-  { key: "vid", label: "Virtual ID (VID)", placeholder: "16-digit Virtual ID" },
-  { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
-  { key: "gender", label: "Gender", placeholder: "Male / Female" },
-  { key: "fathersName", label: "Father's / Husband's Name", placeholder: "Guardian name" },
-  { key: "mobile", label: "Mobile Number", placeholder: "10-digit number" },
-  { key: "address", label: "Address", placeholder: "Residential address", span: true },
-  { key: "pincode", label: "PIN Code", placeholder: "6-digit PIN" },
-  { key: "state", label: "State", placeholder: "State name" },
-  { key: "issueDate", label: "Aadhaar Issue Date", placeholder: "DD/MM/YYYY" },
-  { key: "enrolmentNumber", label: "Enrolment No.", placeholder: "e.g. 0855/04021/00568" },
-  { key: "village", label: "Village / Gram", placeholder: "Village name" },
-  { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
-  { key: "district", label: "District", placeholder: "District name" },
-  { key: "land", label: "Land Area", placeholder: "e.g. 3.5 hectares" },
-  { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
-  { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
-  { key: "bankName", label: "Bank Name", placeholder: "e.g. State Bank of India" },
-  { key: "branchName", label: "Branch Name", placeholder: "e.g. Samta Nagar Thane" },
-  { key: "branchAddress", label: "Branch Address", placeholder: "Branch full address", span: true },
-  { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0013035" },
-  { key: "micrCode", label: "MICR Code", placeholder: "9-digit MICR code" },
-  { key: "bankAccount", label: "Account Number", placeholder: "Account number" },
-  { key: "accountType", label: "Account Type", placeholder: "e.g. Regular Savings Bank Account" },
-  { key: "accountOpeningDate", label: "Account Opening Date", placeholder: "DD/MM/YYYY" },
-  { key: "customerIdCif", label: "Customer ID (CIF)", placeholder: "CIF number" },
-  { key: "nomineeRelationship", label: "Nominee Relationship", placeholder: "e.g. S/D/H/o" },
-  { key: "email", label: "Email Address", placeholder: "e.g. name@bank.in" },
+type ProfileField = { key: keyof FarmerProfile; label: string; placeholder: string; span?: boolean };
+
+const PROFILE_SECTIONS: {
+  id: string;
+  label: string;
+  docIds: DocTypeId[];
+  headerColor: string;
+  headerBg: string;
+  fields: ProfileField[];
+}[] = [
+  {
+    id: "identity",
+    label: "Aadhaar Card — Identity",
+    docIds: ["aadhar"],
+    headerColor: "text-violet-700",
+    headerBg: "bg-violet-50 border-violet-200",
+    fields: [
+      { key: "name", label: "Full Name", placeholder: "Farmer's full name", span: true },
+      { key: "aadhaar", label: "Aadhaar Number", placeholder: "XXXX XXXX XXXX" },
+      { key: "vid", label: "Virtual ID (VID)", placeholder: "16-digit Virtual ID" },
+      { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
+      { key: "gender", label: "Gender", placeholder: "Male / Female" },
+      { key: "fathersName", label: "Father's / Husband's Name", placeholder: "Guardian name" },
+      { key: "mobile", label: "Mobile Number", placeholder: "10-digit number" },
+      { key: "address", label: "Address", placeholder: "Residential address", span: true },
+      { key: "pincode", label: "PIN Code", placeholder: "6-digit PIN" },
+      { key: "state", label: "State", placeholder: "State name" },
+      { key: "issueDate", label: "Aadhaar Issue Date", placeholder: "DD/MM/YYYY" },
+      { key: "enrolmentNumber", label: "Enrolment No.", placeholder: "e.g. 0855/04021/00568" },
+    ],
+  },
+  {
+    id: "bank",
+    label: "Bank Passbook — Account Details",
+    docIds: ["bank_passbook"],
+    headerColor: "text-blue-700",
+    headerBg: "bg-blue-50 border-blue-200",
+    fields: [
+      { key: "bankName", label: "Bank Name", placeholder: "e.g. State Bank of India" },
+      { key: "branchName", label: "Branch Name", placeholder: "e.g. Samta Nagar Thane" },
+      { key: "branchAddress", label: "Branch Address", placeholder: "Branch full address", span: true },
+      { key: "ifsc", label: "IFSC Code", placeholder: "e.g. SBIN0013035" },
+      { key: "micrCode", label: "MICR Code", placeholder: "9-digit MICR code" },
+      { key: "bankAccount", label: "Account Number", placeholder: "Account number" },
+      { key: "accountType", label: "Account Type", placeholder: "e.g. Regular Savings Bank Account", span: true },
+      { key: "accountOpeningDate", label: "Account Opening Date", placeholder: "DD/MM/YYYY" },
+      { key: "customerIdCif", label: "Customer ID (CIF)", placeholder: "CIF number" },
+      { key: "nomineeRelationship", label: "Nominee Relationship", placeholder: "e.g. S/D/H/o" },
+      { key: "email", label: "Email Address", placeholder: "e.g. name@bank.in" },
+    ],
+  },
+  {
+    id: "land",
+    label: "Land Records — Form 7 / 8A / 12",
+    docIds: ["form7", "form8a", "form12"],
+    headerColor: "text-amber-700",
+    headerBg: "bg-amber-50 border-amber-200",
+    fields: [
+      { key: "village", label: "Village / Gram", placeholder: "Village name" },
+      { key: "taluka", label: "Taluka", placeholder: "Taluka name" },
+      { key: "district", label: "District", placeholder: "District name" },
+      { key: "land", label: "Land Area", placeholder: "e.g. 3.5 hectares" },
+      { key: "crop", label: "Primary Crop", placeholder: "e.g. Cotton" },
+      { key: "surveyNumber", label: "Survey / Gat Number", placeholder: "e.g. 123/4" },
+    ],
+  },
 ];
+
+const ALL_PROFILE_FIELDS = PROFILE_SECTIONS.flatMap(s => s.fields);
 
 function AllExtractedData({ docStates }: { docStates: Record<DocTypeId, ExtractionState> }) {
   const [open, setOpen] = useState(false);
@@ -571,7 +612,7 @@ function FarmerProfileCard({
   onApprove: () => void;
   approved: boolean;
 }) {
-  const filledCount = Object.values(profile).filter(Boolean).length;
+  const filledCount = ALL_PROFILE_FIELDS.filter(f => Boolean(profile[f.key])).length;
   const photoSrc = docStates["aadhar"]?.aadharPhoto
     ? `data:${docStates["aadhar"].aadharPhoto.mimeType};base64,${docStates["aadhar"].aadharPhoto.base64}`
     : null;
@@ -595,7 +636,7 @@ function FarmerProfileCard({
             <h3 className="font-semibold text-sm text-foreground">
               {profile.name || "Auto-Built Farmer Profile"}
             </h3>
-            <p className="text-xs text-muted-foreground">{filledCount} of {CORE_PROFILE_FIELDS.length} fields filled · Verify and edit before approving</p>
+            <p className="text-xs text-muted-foreground">{filledCount} of {ALL_PROFILE_FIELDS.length} fields filled · Verify and edit before approving</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -604,21 +645,37 @@ function FarmerProfileCard({
         </div>
       </div>
 
-      <div className="p-5 space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {CORE_PROFILE_FIELDS.map(({ key, label, placeholder, span }) => (
-            <div key={key} className={span ? "sm:col-span-2" : ""}>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
-              <input
-                type="text"
-                value={profile[key]}
-                onChange={(e) => onChange(key, e.target.value)}
-                placeholder={placeholder}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
-              />
+      <div className="p-5 space-y-6">
+        {PROFILE_SECTIONS.map((section) => {
+          const isExtracted = section.docIds.some(id => docStates[id]?.status === "complete");
+          const sectionFilled = section.fields.filter(f => Boolean(profile[f.key])).length;
+          return (
+            <div key={section.id}>
+              <div className={`flex items-center justify-between px-3 py-2 rounded-lg border mb-3 ${section.headerBg}`}>
+                <span className={`text-xs font-semibold tracking-wide uppercase ${section.headerColor}`}>
+                  {section.label}
+                </span>
+                <span className={`text-xs font-medium ${section.headerColor} opacity-70`}>
+                  {isExtracted ? `${sectionFilled} / ${section.fields.length} filled` : "Upload document to extract"}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {section.fields.map(({ key, label, placeholder, span }) => (
+                  <div key={key} className={span ? "sm:col-span-2" : ""}>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+                    <input
+                      type="text"
+                      value={profile[key]}
+                      onChange={(e) => onChange(key, e.target.value)}
+                      placeholder={placeholder}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
 
         <AllExtractedData docStates={docStates} />
 
