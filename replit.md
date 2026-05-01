@@ -57,8 +57,9 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Port Routing
 - **Port 5000**: Vite dev server (agri-admin frontend) — webview workflow
 - **Port 8000**: API server (Express) — console workflow
-- **Port 18593**: Proxy server (`scripts/redirect-8080.mjs`) maps external port 80 → localhost:5000 so the standard domain URL works
-- **Port 8080**: Redirect server → standard domain URL
+- **Port 8080**: Transparent proxy → localhost:5000 (Vite). Replit routes the default external HTTPS URL to port 8080 (despite `externalPort = 8080` in `.replit`). Must be a proxy, not a redirect server, or uploads fail with 301.
+- **Port 18593**: Transparent proxy → localhost:5000 (Vite). Also maps to `externalPort = 80` in `.replit`. Both 8080 and 18593 run via `scripts/redirect-8080.mjs`.
+- **Key insight**: The root cause of "API server unavailable" on uploads was that port 8080 was a redirect server (returning 301 for all requests). Changing it to a transparent proxy fixed multipart POST upload from the browser.
 
 ### Canvas / Mockup Sandbox (`artifacts/mockup-sandbox`)
 - **Type**: Design mockup sandbox (pre-existing scaffold)

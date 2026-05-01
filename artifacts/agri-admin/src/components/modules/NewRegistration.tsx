@@ -615,14 +615,22 @@ function DocUploadCard({
     body.append("mode", "accurate");
     console.info(`[AgriAdmin] Uploading "${file.name}" (${Math.round(file.size / 1024)} KB) as document_type=${card.id} to ${uploadUrl}`);
     try {
-      const res = await fetch(uploadUrl, { method: "POST", body });
+      const res = await fetch(uploadUrl, { method: "POST", body, redirect: "error" });
+      let rawText: string;
       let data: Record<string, unknown> | null = null;
       try {
-        data = await res.json();
-      } catch (parseErr) {
+        rawText = await res.text();
+      } catch (readErr) {
+        console.error(`[AgriAdmin] Upload: Could not read response body from ${uploadUrl}`, { status: res.status, file: file.name, readErr });
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "API server is unavailable. Please try again in a moment." });
+        return;
+      }
+      try {
+        data = JSON.parse(rawText) as Record<string, unknown>;
+      } catch {
         console.error(
-          `[AgriAdmin] Upload: Failed to parse JSON response from ${uploadUrl}`,
-          { status: res.status, statusText: res.statusText, file: file.name, parseErr },
+          `[AgriAdmin] Upload: Response is not JSON (status=${res.status} ${res.statusText})`,
+          { file: file.name, rawBody: rawText.substring(0, 500) },
         );
         onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "API server is unavailable. Please try again in a moment." });
         return;
@@ -651,11 +659,14 @@ function DocUploadCard({
         (msg) => { onStateChange((prev: ExtractionState) => ({ ...prev, status: "error", error: msg })); },
       );
     } catch (err) {
-      console.error(
-        `[AgriAdmin] Upload: Network error sending to ${uploadUrl}`,
-        { file: file.name, err },
-      );
-      onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: err instanceof Error ? err.message : "Network error" });
+      const isRedirect = err instanceof TypeError && String(err.message).toLowerCase().includes("redirect");
+      if (isRedirect) {
+        console.error(`[AgriAdmin] Upload: Request was redirected (redirect:'error' mode) — API proxy may be misconfigured`, { file: file.name, err });
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: "API server is unavailable. Please try again in a moment." });
+      } else {
+        console.error(`[AgriAdmin] Upload: Network error sending to ${uploadUrl}`, { file: file.name, err });
+        onStateChange({ ...DEFAULT_STATE, filename: file.name, status: "error", error: err instanceof Error ? err.message : "Network error" });
+      }
     }
   }, [card.id, onStateChange]);
 
