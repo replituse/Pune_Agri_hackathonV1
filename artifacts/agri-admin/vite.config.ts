@@ -76,6 +76,14 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8000",
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on("error", (_err, _req, res) => {
+            if ("writeHead" in res && typeof res.writeHead === "function") {
+              res.writeHead(502, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "API server is unavailable. Please try again in a moment." }));
+            }
+          });
+        },
       },
     },
   },
