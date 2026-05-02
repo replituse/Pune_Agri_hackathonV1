@@ -80,128 +80,152 @@ function CategoryBadge({ category, compact }: { category: string; compact?: bool
   );
 }
 
-function SchemeDetailPanel({ scheme, onClose }: { scheme: Scheme; onClose: () => void }) {
+function SchemeDetailModal({ scheme, onClose }: { scheme: Scheme; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-foreground/30 z-50 flex justify-end" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      onClick={onClose}
+    >
       <div
-        className="bg-card border-l border-border w-full max-w-2xl h-full overflow-y-auto p-6 animate-fade-in"
-        style={{ opacity: 0 }}
+        className="bg-card rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-start mb-5">
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-5 border-b border-border bg-muted/30 flex-shrink-0">
           <div className="flex-1 pr-4">
-            <h2 className="font-heading text-xl leading-tight mb-2">{scheme.name}</h2>
-            <div className="flex flex-wrap gap-2">
+            <h2 className="font-heading text-lg font-semibold leading-snug mb-2">{scheme.name}</h2>
+            <div className="flex flex-wrap items-center gap-2">
               <TypeBadge type={scheme.type} />
-              <StatusBadge status={scheme.status} />
-              <CategoryBadge category={scheme.category} />
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${scheme.status === "Active" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                {scheme.status === "Active" ? "● Active" : "● Closed"}
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded bg-muted/70 text-muted-foreground font-medium">{scheme.category}</span>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors"
+          >
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
-        <div className="space-y-5">
-          {/* Description */}
-          <div>
-            <h3 className="font-heading text-sm mb-1.5">Overview</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{scheme.description}</p>
-          </div>
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+
+          {/* Overview */}
+          <section>
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overview</h3>
+            <p className="text-sm leading-relaxed text-foreground">{scheme.description}</p>
+          </section>
 
           {/* Benefits */}
-          <div className="bg-secondary/10 rounded-lg p-4">
-            <h3 className="font-heading text-sm mb-1.5">Benefits</h3>
+          <section className="bg-secondary/10 border border-secondary/20 rounded-lg px-4 py-3">
+            <h3 className="font-heading text-sm font-semibold mb-1 text-secondary">Benefits</h3>
             <p className="text-sm font-medium">{scheme.benefits}</p>
-          </div>
+          </section>
 
           {/* Eligibility */}
-          <div>
-            <h3 className="font-heading text-sm mb-2">Eligibility</h3>
-            <p className="text-sm text-muted-foreground mb-3 italic">{scheme.eligibility.summary}</p>
+          <section>
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Eligibility</h3>
+            <p className="text-sm text-muted-foreground italic mb-3">{scheme.eligibility.summary}</p>
+
             {scheme.eligibility.parameters.length > 0 && (
-              <div className="bg-muted/30 rounded-lg overflow-hidden mb-3">
+              <div className="rounded-lg overflow-hidden border border-border mb-4">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-muted/50 text-left text-muted-foreground">
-                      <th className="px-3 py-2 font-medium">Parameter</th>
-                      <th className="px-3 py-2 font-medium">Rule</th>
-                      <th className="px-3 py-2 font-medium">Validation</th>
+                    <tr className="bg-muted/60 text-left">
+                      <th className="px-4 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground w-[28%]">Parameter</th>
+                      <th className="px-4 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground w-[44%]">Rule</th>
+                      <th className="px-4 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Validation</th>
                     </tr>
                   </thead>
                   <tbody>
                     {scheme.eligibility.parameters.map((p, i) => (
-                      <tr key={i} className="border-t border-border/40">
-                        <td className="px-3 py-2 font-medium">{p.parameter}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{p.rule}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{p.validation}</td>
+                      <tr key={i} className="border-t border-border/50 hover:bg-muted/20">
+                        <td className="px-4 py-2.5 font-medium text-sm">{p.parameter}</td>
+                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{p.rule}</td>
+                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{p.validation}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+
             {scheme.eligibility.familyCriteria.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Family Criteria</p>
-                <ul className="space-y-1">
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Family Criteria</p>
+                <ul className="space-y-1.5">
                   {scheme.eligibility.familyCriteria.map((c, i) => (
-                    <li key={i} className="text-sm flex gap-2"><span className="text-primary">•</span>{c}</li>
+                    <li key={i} className="text-sm flex gap-2 items-start"><span className="text-primary mt-0.5">•</span><span>{c}</span></li>
                   ))}
                 </ul>
               </div>
             )}
+
             {scheme.eligibility.exclusions && scheme.eligibility.exclusions.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs font-medium text-destructive mb-1.5 uppercase tracking-wide">Exclusions</p>
-                <ul className="space-y-1">
+              <div className="bg-destructive/5 border border-destructive/15 rounded-lg px-4 py-3">
+                <p className="text-xs font-semibold text-destructive mb-2 uppercase tracking-wide">Exclusions</p>
+                <ul className="space-y-1.5">
                   {scheme.eligibility.exclusions.map((e, i) => (
-                    <li key={i} className="text-sm flex gap-2"><span className="text-destructive">✗</span>{e}</li>
+                    <li key={i} className="text-sm flex gap-2 items-start"><span className="text-destructive mt-0.5">✗</span><span>{e}</span></li>
                   ))}
                 </ul>
               </div>
             )}
-          </div>
+          </section>
 
           {/* Documents */}
-          <div>
-            <h3 className="font-heading text-sm mb-2">Required Documents</h3>
-            <ul className="space-y-1.5">
+          <section>
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Required Documents</h3>
+            <div className="grid grid-cols-2 gap-2">
               {scheme.documents.map((d, i) => (
-                <li key={i} className="text-sm flex gap-2"><span className="text-secondary">📄</span>{d}</li>
+                <div key={i} className="flex items-center gap-2 bg-muted/40 rounded-md px-3 py-2">
+                  <span className="text-base">📄</span>
+                  <span className="text-sm">{d}</span>
+                </div>
               ))}
-            </ul>
-          </div>
+            </div>
+          </section>
 
           {/* Validation Rules */}
-          <div>
-            <h3 className="font-heading text-sm mb-2">Validation Rules</h3>
-            <ul className="space-y-1.5">
+          <section>
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Validation Rules</h3>
+            <ul className="space-y-2">
               {scheme.validationRules.map((r, i) => (
-                <li key={i} className="text-sm flex gap-2"><span className="text-warning">⚠</span>{r}</li>
+                <li key={i} className="text-sm flex gap-2 items-start">
+                  <span className="text-warning mt-0.5">⚠</span><span>{r}</span>
+                </li>
               ))}
             </ul>
-          </div>
+          </section>
 
-          {/* Approval / Rejection */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-success/5 border border-success/20 rounded-lg p-3">
-              <h4 className="text-xs font-medium text-success mb-2 uppercase tracking-wide">Approve When</h4>
-              <ul className="space-y-1">
+          {/* Approve / Reject */}
+          <section className="grid grid-cols-2 gap-4 pb-1">
+            <div className="bg-success/5 border border-success/25 rounded-lg px-4 py-3">
+              <h4 className="text-xs font-semibold text-success mb-2.5 uppercase tracking-wide flex items-center gap-1.5">
+                <span>✓</span> Approve When
+              </h4>
+              <ul className="space-y-1.5">
                 {scheme.approvalRules.approve.map((r, i) => (
-                  <li key={i} className="text-xs flex gap-1.5"><span className="text-success">✓</span>{r}</li>
+                  <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-success mt-0.5">✓</span><span>{r}</span></li>
                 ))}
               </ul>
             </div>
-            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
-              <h4 className="text-xs font-medium text-destructive mb-2 uppercase tracking-wide">Reject When</h4>
-              <ul className="space-y-1">
+            <div className="bg-destructive/5 border border-destructive/25 rounded-lg px-4 py-3">
+              <h4 className="text-xs font-semibold text-destructive mb-2.5 uppercase tracking-wide flex items-center gap-1.5">
+                <span>✗</span> Reject When
+              </h4>
+              <ul className="space-y-1.5">
                 {scheme.approvalRules.reject.map((r, i) => (
-                  <li key={i} className="text-xs flex gap-1.5"><span className="text-destructive">✗</span>{r}</li>
+                  <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-destructive mt-0.5">✗</span><span>{r}</span></li>
                 ))}
               </ul>
             </div>
-          </div>
+          </section>
+
         </div>
       </div>
     </div>
@@ -506,7 +530,7 @@ export default function AllSchemes() {
       )}
 
       {/* Detail Panel */}
-      {selected && <SchemeDetailPanel scheme={selected} onClose={() => setSelected(null)} />}
+      {selected && <SchemeDetailModal scheme={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
