@@ -1,0 +1,479 @@
+import { useState, useEffect, useMemo } from "react";
+import { Search, LayoutGrid, LayoutList, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from "lucide-react";
+
+interface EligibilityParam {
+  parameter: string;
+  rule: string;
+  validation: string;
+}
+
+interface Scheme {
+  id: string;
+  name: string;
+  type: "CENTRAL" | "STATE";
+  state: string | null;
+  category: string;
+  description: string;
+  eligibility: {
+    summary: string;
+    parameters: EligibilityParam[];
+    familyCriteria: string[];
+    exclusions?: string[];
+  };
+  documents: string[];
+  validationRules: string[];
+  approvalRules: { approve: string[]; reject: string[] };
+  benefits: string;
+  status: "Active" | "Closed";
+}
+
+const PAGE_SIZE = 6;
+
+function TypeBadge({ type }: { type: "CENTRAL" | "STATE" }) {
+  return (
+    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${type === "CENTRAL" ? "bg-primary/10 text-primary" : "bg-secondary/15 text-secondary"}`}>
+      {type === "CENTRAL" ? "🏛 Central" : "🏠 Maharashtra"}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: "Active" | "Closed" }) {
+  return (
+    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${status === "Active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+      {status === "Active" ? "✅ Active" : "⛔ Closed"}
+    </span>
+  );
+}
+
+function CategoryBadge({ category }: { category: string }) {
+  return (
+    <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+      {category}
+    </span>
+  );
+}
+
+function SchemeDetailPanel({ scheme, onClose }: { scheme: Scheme; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-foreground/30 z-50 flex justify-end" onClick={onClose}>
+      <div
+        className="bg-card border-l border-border w-full max-w-2xl h-full overflow-y-auto p-6 animate-fade-in"
+        style={{ opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-5">
+          <div className="flex-1 pr-4">
+            <h2 className="font-heading text-xl leading-tight mb-2">{scheme.name}</h2>
+            <div className="flex flex-wrap gap-2">
+              <TypeBadge type={scheme.type} />
+              <StatusBadge status={scheme.status} />
+              <CategoryBadge category={scheme.category} />
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors flex-shrink-0">
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          {/* Description */}
+          <div>
+            <h3 className="font-heading text-sm mb-1.5">Overview</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">{scheme.description}</p>
+          </div>
+
+          {/* Benefits */}
+          <div className="bg-secondary/10 rounded-lg p-4">
+            <h3 className="font-heading text-sm mb-1.5">Benefits</h3>
+            <p className="text-sm font-medium">{scheme.benefits}</p>
+          </div>
+
+          {/* Eligibility */}
+          <div>
+            <h3 className="font-heading text-sm mb-2">Eligibility</h3>
+            <p className="text-sm text-muted-foreground mb-3 italic">{scheme.eligibility.summary}</p>
+            {scheme.eligibility.parameters.length > 0 && (
+              <div className="bg-muted/30 rounded-lg overflow-hidden mb-3">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50 text-left text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Parameter</th>
+                      <th className="px-3 py-2 font-medium">Rule</th>
+                      <th className="px-3 py-2 font-medium">Validation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scheme.eligibility.parameters.map((p, i) => (
+                      <tr key={i} className="border-t border-border/40">
+                        <td className="px-3 py-2 font-medium">{p.parameter}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{p.rule}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{p.validation}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {scheme.eligibility.familyCriteria.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Family Criteria</p>
+                <ul className="space-y-1">
+                  {scheme.eligibility.familyCriteria.map((c, i) => (
+                    <li key={i} className="text-sm flex gap-2"><span className="text-primary">•</span>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {scheme.eligibility.exclusions && scheme.eligibility.exclusions.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-destructive mb-1.5 uppercase tracking-wide">Exclusions</p>
+                <ul className="space-y-1">
+                  {scheme.eligibility.exclusions.map((e, i) => (
+                    <li key={i} className="text-sm flex gap-2"><span className="text-destructive">✗</span>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Documents */}
+          <div>
+            <h3 className="font-heading text-sm mb-2">Required Documents</h3>
+            <ul className="space-y-1.5">
+              {scheme.documents.map((d, i) => (
+                <li key={i} className="text-sm flex gap-2"><span className="text-secondary">📄</span>{d}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Validation Rules */}
+          <div>
+            <h3 className="font-heading text-sm mb-2">Validation Rules</h3>
+            <ul className="space-y-1.5">
+              {scheme.validationRules.map((r, i) => (
+                <li key={i} className="text-sm flex gap-2"><span className="text-warning">⚠</span>{r}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Approval / Rejection */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-success/5 border border-success/20 rounded-lg p-3">
+              <h4 className="text-xs font-medium text-success mb-2 uppercase tracking-wide">Approve When</h4>
+              <ul className="space-y-1">
+                {scheme.approvalRules.approve.map((r, i) => (
+                  <li key={i} className="text-xs flex gap-1.5"><span className="text-success">✓</span>{r}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+              <h4 className="text-xs font-medium text-destructive mb-2 uppercase tracking-wide">Reject When</h4>
+              <ul className="space-y-1">
+                {scheme.approvalRules.reject.map((r, i) => (
+                  <li key={i} className="text-xs flex gap-1.5"><span className="text-destructive">✗</span>{r}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableRow({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <>
+      <tr className="border-t border-border/50 hover:bg-muted/20 transition-colors">
+        <td className="px-4 py-3">
+          <button onClick={onView} className="font-medium text-sm text-left hover:text-primary transition-colors leading-tight">{scheme.name}</button>
+        </td>
+        <td className="px-4 py-3"><TypeBadge type={scheme.type} /></td>
+        <td className="px-4 py-3"><CategoryBadge category={scheme.category} /></td>
+        <td className="px-4 py-3 max-w-xs">
+          <p className="text-xs text-muted-foreground line-clamp-2">{scheme.eligibility.summary}</p>
+        </td>
+        <td className="px-4 py-3"><StatusBadge status={scheme.status} /></td>
+        <td className="px-4 py-3">
+          <div className="flex gap-1.5">
+            <button onClick={onView} className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:opacity-80 transition-opacity">Details</button>
+            <button
+              onClick={() => setExpanded(e => !e)}
+              className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
+              title="Toggle eligibility"
+            >
+              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-t border-border/30 bg-muted/10">
+          <td colSpan={6} className="px-4 py-3">
+            <div className="grid grid-cols-3 gap-4 text-xs">
+              <div>
+                <p className="font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Documents</p>
+                <ul className="space-y-1">{scheme.documents.map((d, i) => <li key={i} className="flex gap-1.5"><span className="text-secondary">•</span>{d}</li>)}</ul>
+              </div>
+              <div>
+                <p className="font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Approve When</p>
+                <ul className="space-y-1">{scheme.approvalRules.approve.map((r, i) => <li key={i} className="flex gap-1.5"><span className="text-success">✓</span>{r}</li>)}</ul>
+              </div>
+              <div>
+                <p className="font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Reject When</p>
+                <ul className="space-y-1">{scheme.approvalRules.reject.map((r, i) => <li key={i} className="flex gap-1.5"><span className="text-destructive">✗</span>{r}</li>)}</ul>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function GridCard({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-heading text-sm leading-snug flex-1">{scheme.name}</h3>
+        <StatusBadge status={scheme.status} />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <TypeBadge type={scheme.type} />
+        <CategoryBadge category={scheme.category} />
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 flex-1">{scheme.description}</p>
+      <div className="bg-secondary/10 rounded p-2.5">
+        <p className="text-xs font-medium text-secondary-foreground line-clamp-2">{scheme.benefits}</p>
+      </div>
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-1">Key Docs</p>
+        <p className="text-xs text-muted-foreground">{scheme.documents.slice(0, 3).join(" · ")}{scheme.documents.length > 3 ? ` +${scheme.documents.length - 3} more` : ""}</p>
+      </div>
+      <button onClick={onView} className="text-sm px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity mt-auto">
+        View Full Details
+      </button>
+    </div>
+  );
+}
+
+export default function AllSchemes() {
+  const [schemes, setSchemes] = useState<Scheme[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"table" | "grid">("table");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "CENTRAL" | "STATE">("ALL");
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<Scheme | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetch("/api/schemes")
+      .then((r) => {
+        if (!r.ok) throw new Error(`Server error ${r.status}`);
+        return r.json() as Promise<Scheme[]>;
+      })
+      .then((data) => { setSchemes(data); setLoading(false); })
+      .catch((err: Error) => { setError(err.message); setLoading(false); });
+  }, []);
+
+  const filtered = useMemo(() => {
+    let s = schemes;
+    if (typeFilter !== "ALL") s = s.filter((x) => x.type === typeFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      s = s.filter((x) =>
+        x.name.toLowerCase().includes(q) ||
+        x.category.toLowerCase().includes(q) ||
+        x.description.toLowerCase().includes(q)
+      );
+    }
+    return s;
+  }, [schemes, typeFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageData = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
+  const handleSearch = (v: string) => { setSearch(v); setPage(0); };
+  const handleFilter = (v: "ALL" | "CENTRAL" | "STATE") => { setTypeFilter(v); setPage(0); };
+
+  const central = schemes.filter((s) => s.type === "CENTRAL").length;
+  const state = schemes.filter((s) => s.type === "STATE").length;
+
+  return (
+    <div className="space-y-4 animate-fade-in" style={{ opacity: 0 }}>
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search schemes..."
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        {/* Type filter */}
+        <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
+          {(["ALL", "CENTRAL", "STATE"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => handleFilter(t)}
+              className={`text-sm px-3.5 py-1.5 rounded-md transition-colors ${typeFilter === t ? "bg-card shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {t === "ALL" ? "All" : t === "CENTRAL" ? "🏛 Central" : "🏠 Maharashtra"}
+            </button>
+          ))}
+        </div>
+
+        {/* View toggle */}
+        <div className="flex gap-1 bg-muted/30 rounded-lg p-1">
+          <button
+            onClick={() => setView("table")}
+            className={`p-1.5 rounded-md transition-colors ${view === "table" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            title="Table view"
+          >
+            <LayoutList className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setView("grid")}
+            className={`p-1.5 rounded-md transition-colors ${view === "grid" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            title="Grid view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="flex gap-3 flex-wrap">
+        {[
+          ["Total Schemes", schemes.length],
+          ["Central Govt", central],
+          ["Maharashtra", state],
+          ["Showing", filtered.length],
+        ].map(([l, v]) => (
+          <span key={l as string} className="text-xs bg-card border border-border rounded-full px-3 py-1.5 font-medium">
+            {l}: <span className="text-primary">{v}</span>
+          </span>
+        ))}
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-14 bg-muted/40 rounded-lg animate-pulse" />)}
+        </div>
+      ) : error ? (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
+          <p className="text-sm text-destructive font-medium">Failed to load schemes</p>
+          <p className="text-xs text-muted-foreground mt-1">{error}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-muted/20 rounded-lg p-10 text-center">
+          <p className="text-muted-foreground text-sm">No schemes match your search.</p>
+        </div>
+      ) : view === "table" ? (
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 text-left text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Scheme Name</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Category</th>
+                  <th className="px-4 py-3 font-medium">Eligibility Summary</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageData.map((s) => (
+                  <TableRow key={s.id} scheme={s} onView={() => setSelected(s)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">
+              Page {safePage + 1} of {totalPages} · {filtered.length} schemes
+            </span>
+            <div className="flex gap-1">
+              <button
+                disabled={safePage === 0}
+                onClick={() => setPage((p) => p - 1)}
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={`text-xs w-7 h-7 rounded transition-colors ${safePage === i ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {pageData.map((s) => (
+              <GridCard key={s.id} scheme={s} onView={() => setSelected(s)} />
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              Page {safePage + 1} of {totalPages} · {filtered.length} schemes
+            </span>
+            <div className="flex gap-1">
+              <button
+                disabled={safePage === 0}
+                onClick={() => setPage((p) => p - 1)}
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={`text-xs w-7 h-7 rounded transition-colors ${safePage === i ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Panel */}
+      {selected && <SchemeDetailPanel scheme={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}

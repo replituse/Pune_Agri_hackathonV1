@@ -1,10 +1,11 @@
-import { BarChart3, Users, ClipboardList, IndianRupee, Shield, Megaphone, TrendingUp, Settings, Wheat, ChevronLeft, ChevronRight, Smartphone, UserPlus } from "lucide-react";
+import { BarChart3, Users, ClipboardList, IndianRupee, Shield, Megaphone, TrendingUp, Settings, Wheat, ChevronLeft, ChevronRight, Smartphone, UserPlus, BookOpen } from "lucide-react";
 
 const navItems = [
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
   { key: "newregistration", label: "New Registration", icon: UserPlus },
   { key: "farmers", label: "Farmer Registry", icon: Users },
   { key: "applications", label: "Scheme Applications", icon: ClipboardList },
+  { key: "allschemes", label: "All Schemes", icon: BookOpen },
   { key: "subsidies", label: "Subsidy Management", icon: IndianRupee },
   { key: "insurance", label: "Insurance Claims", icon: Shield },
   { key: "grievances", label: "Grievance Management", icon: Megaphone },
