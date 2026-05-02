@@ -212,7 +212,7 @@ function TableRow({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <>
-      <tr className="border-t border-border/50 hover:bg-primary/5 transition-colors">
+      <tr className="border-t border-border/50 hover:bg-success/10 transition-colors cursor-pointer">
         <td className="px-4 py-3 w-[32%]">
           <button onClick={onView} className="font-medium text-sm text-left hover:text-primary transition-colors leading-snug">{scheme.name}</button>
         </td>
