@@ -68,13 +68,13 @@ function StatusBadge({ status }: { status: "Active" | "Closed" }) {
 function CategoryBadge({ category, compact }: { category: string; compact?: boolean }) {
   if (compact) {
     return (
-      <span className="inline-block text-xs px-2 py-1 rounded-md bg-muted/70 text-foreground font-medium leading-tight whitespace-normal text-center">
+      <span className="inline-block text-xs text-foreground font-medium leading-snug text-left">
         {category}
       </span>
     );
   }
   return (
-    <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+    <span className="text-xs text-muted-foreground font-medium">
       {category}
     </span>
   );
@@ -212,7 +212,7 @@ function TableRow({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <>
-      <tr className="border-t border-border/50 hover:bg-muted/20 transition-colors">
+      <tr className="border-t border-border/50 hover:bg-primary/5 transition-colors">
         <td className="px-4 py-3 w-[32%]">
           <button onClick={onView} className="font-medium text-sm text-left hover:text-primary transition-colors leading-snug">{scheme.name}</button>
         </td>
