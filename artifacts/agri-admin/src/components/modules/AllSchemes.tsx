@@ -27,12 +27,32 @@ interface Scheme {
   status: "Active" | "Closed";
 }
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 10;
 
-function TypeBadge({ type }: { type: "CENTRAL" | "STATE" }) {
+function TypeBadge({ type, compact }: { type: "CENTRAL" | "STATE"; compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-0.5 w-fit">
+        <span className={`text-base leading-none ${type === "CENTRAL" ? "text-primary" : "text-secondary"}`}>
+          {type === "CENTRAL" ? "🏛" : "🏠"}
+        </span>
+        <span className={`text-[11px] font-semibold leading-none ${type === "CENTRAL" ? "text-primary" : "text-[#b45309]"}`}>
+          {type === "CENTRAL" ? "Central" : "Maharashtra"}
+        </span>
+      </div>
+    );
+  }
   return (
     <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${type === "CENTRAL" ? "bg-primary/10 text-primary" : "bg-secondary/15 text-secondary"}`}>
       {type === "CENTRAL" ? "🏛 Central" : "🏠 Maharashtra"}
+    </span>
+  );
+}
+
+function StatusText({ status }: { status: "Active" | "Closed" }) {
+  return (
+    <span className={`text-sm font-semibold ${status === "Active" ? "text-success" : "text-muted-foreground"}`}>
+      {status}
     </span>
   );
 }
@@ -45,7 +65,14 @@ function StatusBadge({ status }: { status: "Active" | "Closed" }) {
   );
 }
 
-function CategoryBadge({ category }: { category: string }) {
+function CategoryBadge({ category, compact }: { category: string; compact?: boolean }) {
+  if (compact) {
+    return (
+      <span className="inline-block text-xs px-2 py-1 rounded-md bg-muted/70 text-foreground font-medium leading-tight whitespace-normal text-center">
+        {category}
+      </span>
+    );
+  }
   return (
     <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
       {category}
@@ -186,21 +213,27 @@ function TableRow({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
   return (
     <>
       <tr className="border-t border-border/50 hover:bg-muted/20 transition-colors">
-        <td className="px-4 py-3">
-          <button onClick={onView} className="font-medium text-sm text-left hover:text-primary transition-colors leading-tight">{scheme.name}</button>
+        <td className="px-4 py-3 w-[32%]">
+          <button onClick={onView} className="font-medium text-sm text-left hover:text-primary transition-colors leading-snug">{scheme.name}</button>
         </td>
-        <td className="px-4 py-3"><TypeBadge type={scheme.type} /></td>
-        <td className="px-4 py-3"><CategoryBadge category={scheme.category} /></td>
-        <td className="px-4 py-3 max-w-xs">
-          <p className="text-xs text-muted-foreground line-clamp-2">{scheme.eligibility.summary}</p>
+        <td className="px-4 py-3 w-[10%] align-middle">
+          <TypeBadge type={scheme.type} compact />
         </td>
-        <td className="px-4 py-3"><StatusBadge status={scheme.status} /></td>
-        <td className="px-4 py-3">
-          <div className="flex gap-1.5">
-            <button onClick={onView} className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:opacity-80 transition-opacity">Details</button>
+        <td className="px-4 py-3 w-[14%] align-middle">
+          <CategoryBadge category={scheme.category} compact />
+        </td>
+        <td className="px-4 py-3 w-[28%]">
+          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{scheme.eligibility.summary}</p>
+        </td>
+        <td className="px-4 py-3 w-[8%] align-middle">
+          <StatusText status={scheme.status} />
+        </td>
+        <td className="px-4 py-3 w-[8%] align-middle">
+          <div className="flex gap-1.5 items-center">
+            <button onClick={onView} className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:opacity-80 transition-opacity whitespace-nowrap">Details</button>
             <button
               onClick={() => setExpanded(e => !e)}
-              className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
+              className="p-1 rounded bg-muted hover:bg-muted/80 transition-colors flex-shrink-0"
               title="Toggle eligibility"
             >
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
