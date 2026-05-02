@@ -83,150 +83,135 @@ function CategoryBadge({ category, compact }: { category: string; compact?: bool
 function SchemeDetailModal({ scheme, onClose }: { scheme: Scheme; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-      onClick={onClose}
+      className="fixed top-0 right-0 z-50 h-full w-1/2 bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
+      style={{ minWidth: 480 }}
     >
-      <div
-        className="bg-card rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-border bg-muted/30 flex-shrink-0">
-          <div className="flex-1 pr-4">
-            <h2 className="font-heading text-lg font-semibold leading-snug mb-2">{scheme.name}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <TypeBadge type={scheme.type} />
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${scheme.status === "Active" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
-                {scheme.status === "Active" ? "● Active" : "● Closed"}
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded bg-muted/70 text-muted-foreground font-medium">{scheme.category}</span>
-            </div>
+      {/* ── Header ───────────────────────────────────────── */}
+      <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-muted/20 flex-shrink-0">
+        <div className="flex-1 pr-3">
+          <h2 className="font-heading text-base font-semibold leading-snug mb-1.5">{scheme.name}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <TypeBadge type={scheme.type} />
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${scheme.status === "Active" ? "text-success" : "text-muted-foreground"}`}>
+              ● {scheme.status}
+            </span>
+            <span className="text-xs text-muted-foreground font-medium">{scheme.category}</span>
           </div>
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
+        </div>
+        <button onClick={onClose} className="flex-shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors">
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* ── Body — scrollable only if content overflows ─── */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm">
+
+        {/* Overview + Benefits — side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Overview</p>
+            <p className="text-xs leading-relaxed text-foreground">{scheme.description}</p>
+          </div>
+          <div className="bg-secondary/10 border border-secondary/20 rounded-lg px-3 py-2.5">
+            <p className="text-[11px] font-semibold text-secondary mb-1 uppercase tracking-wide">Benefits</p>
+            <p className="text-xs font-medium leading-relaxed">{scheme.benefits}</p>
+          </div>
         </div>
 
-        {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
-
-          {/* Overview */}
-          <section>
-            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overview</h3>
-            <p className="text-sm leading-relaxed text-foreground">{scheme.description}</p>
-          </section>
-
-          {/* Benefits */}
-          <section className="bg-secondary/10 border border-secondary/20 rounded-lg px-4 py-3">
-            <h3 className="font-heading text-sm font-semibold mb-1 text-secondary">Benefits</h3>
-            <p className="text-sm font-medium">{scheme.benefits}</p>
-          </section>
-
-          {/* Eligibility */}
-          <section>
-            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Eligibility</h3>
-            <p className="text-sm text-muted-foreground italic mb-3">{scheme.eligibility.summary}</p>
-
-            {scheme.eligibility.parameters.length > 0 && (
-              <div className="rounded-lg overflow-hidden border border-border mb-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/60 text-left">
-                      <th className="px-4 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground w-[28%]">Parameter</th>
-                      <th className="px-4 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground w-[44%]">Rule</th>
-                      <th className="px-4 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Validation</th>
+        {/* Eligibility */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Eligibility</p>
+          <p className="text-xs italic text-muted-foreground mb-2">{scheme.eligibility.summary}</p>
+          {scheme.eligibility.parameters.length > 0 && (
+            <div className="rounded-lg overflow-hidden border border-border">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-[26%]">Parameter</th>
+                    <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-[42%]">Rule</th>
+                    <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Validation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scheme.eligibility.parameters.map((p, i) => (
+                    <tr key={i} className="border-t border-border/40">
+                      <td className="px-3 py-1.5 text-xs font-medium">{p.parameter}</td>
+                      <td className="px-3 py-1.5 text-xs text-muted-foreground">{p.rule}</td>
+                      <td className="px-3 py-1.5 text-xs text-muted-foreground">{p.validation}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {scheme.eligibility.parameters.map((p, i) => (
-                      <tr key={i} className="border-t border-border/50 hover:bg-muted/20">
-                        <td className="px-4 py-2.5 font-medium text-sm">{p.parameter}</td>
-                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{p.rule}</td>
-                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{p.validation}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {scheme.eligibility.familyCriteria.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Family Criteria</p>
-                <ul className="space-y-1.5">
-                  {scheme.eligibility.familyCriteria.map((c, i) => (
-                    <li key={i} className="text-sm flex gap-2 items-start"><span className="text-primary mt-0.5">•</span><span>{c}</span></li>
                   ))}
-                </ul>
-              </div>
-            )}
-
-            {scheme.eligibility.exclusions && scheme.eligibility.exclusions.length > 0 && (
-              <div className="bg-destructive/5 border border-destructive/15 rounded-lg px-4 py-3">
-                <p className="text-xs font-semibold text-destructive mb-2 uppercase tracking-wide">Exclusions</p>
-                <ul className="space-y-1.5">
-                  {scheme.eligibility.exclusions.map((e, i) => (
-                    <li key={i} className="text-sm flex gap-2 items-start"><span className="text-destructive mt-0.5">✗</span><span>{e}</span></li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-
-          {/* Documents */}
-          <section>
-            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Required Documents</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {scheme.documents.map((d, i) => (
-                <div key={i} className="flex items-center gap-2 bg-muted/40 rounded-md px-3 py-2">
-                  <span className="text-base">📄</span>
-                  <span className="text-sm">{d}</span>
-                </div>
-              ))}
+                </tbody>
+              </table>
             </div>
-          </section>
+          )}
+        </div>
 
-          {/* Validation Rules */}
-          <section>
-            <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Validation Rules</h3>
-            <ul className="space-y-2">
-              {scheme.validationRules.map((r, i) => (
-                <li key={i} className="text-sm flex gap-2 items-start">
-                  <span className="text-warning mt-0.5">⚠</span><span>{r}</span>
+        {/* Family Criteria + Exclusions — side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          {scheme.eligibility.familyCriteria.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Family Criteria</p>
+              <ul className="space-y-1">
+                {scheme.eligibility.familyCriteria.map((c, i) => (
+                  <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-primary mt-0.5 flex-shrink-0">•</span>{c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {scheme.eligibility.exclusions && scheme.eligibility.exclusions.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-destructive mb-1">Exclusions</p>
+              <ul className="space-y-1">
+                {scheme.eligibility.exclusions.map((e, i) => (
+                  <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-destructive flex-shrink-0">✗</span>{e}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Documents + Validation Rules — side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Required Documents</p>
+            <ul className="space-y-1">
+              {scheme.documents.map((d, i) => (
+                <li key={i} className="text-xs flex gap-1.5 items-center">
+                  <span className="text-sm flex-shrink-0">📄</span>{d}
                 </li>
               ))}
             </ul>
-          </section>
-
-          {/* Approve / Reject */}
-          <section className="grid grid-cols-2 gap-4 pb-1">
-            <div className="bg-success/5 border border-success/25 rounded-lg px-4 py-3">
-              <h4 className="text-xs font-semibold text-success mb-2.5 uppercase tracking-wide flex items-center gap-1.5">
-                <span>✓</span> Approve When
-              </h4>
-              <ul className="space-y-1.5">
-                {scheme.approvalRules.approve.map((r, i) => (
-                  <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-success mt-0.5">✓</span><span>{r}</span></li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-destructive/5 border border-destructive/25 rounded-lg px-4 py-3">
-              <h4 className="text-xs font-semibold text-destructive mb-2.5 uppercase tracking-wide flex items-center gap-1.5">
-                <span>✗</span> Reject When
-              </h4>
-              <ul className="space-y-1.5">
-                {scheme.approvalRules.reject.map((r, i) => (
-                  <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-destructive mt-0.5">✗</span><span>{r}</span></li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Validation Rules</p>
+            <ul className="space-y-1">
+              {scheme.validationRules.map((r, i) => (
+                <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-warning flex-shrink-0">⚠</span>{r}</li>
+              ))}
+            </ul>
+          </div>
         </div>
+
+        {/* Approve / Reject */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-success/5 border border-success/20 rounded-lg px-3 py-2.5">
+            <p className="text-[11px] font-semibold text-success uppercase tracking-wide mb-1.5">✓ Approve When</p>
+            <ul className="space-y-1">
+              {scheme.approvalRules.approve.map((r, i) => (
+                <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-success flex-shrink-0">✓</span>{r}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2.5">
+            <p className="text-[11px] font-semibold text-destructive uppercase tracking-wide mb-1.5">✗ Reject When</p>
+            <ul className="space-y-1">
+              {scheme.approvalRules.reject.map((r, i) => (
+                <li key={i} className="text-xs flex gap-1.5 items-start"><span className="text-destructive flex-shrink-0">✗</span>{r}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
       </div>
     </div>
   );
