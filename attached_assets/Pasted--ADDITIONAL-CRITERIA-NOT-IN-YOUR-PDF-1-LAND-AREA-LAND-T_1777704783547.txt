@@ -1,0 +1,135 @@
+✅ 🧠 ADDITIONAL CRITERIA (NOT IN YOUR PDF)
+🌾 1. LAND AREA & LAND TYPE (MISSING IN PDF)
+Add this block:
+"land_criteria": {
+  "min_area": 0,
+  "max_area": null,
+  "preferred_category": "Small/Marginal (<=2 hectare)",
+  "land_type_required": ["agricultural", "cultivable"],
+  "land_usage_required": true,
+  "geo_tag_required": true
+}
+💡 Logic:
+No strict cap → but prioritize small farmers
+Must be:
+Cultivable
+Actively used for farming
+Geo-tagging helps fraud detection
+🚜 2. ACTIVE FARMING VALIDATION (VERY IMPORTANT)
+"farming_activity": {
+  "required": true,
+  "proof_types": [
+    "crop_sowing_record",
+    "irrigation_usage",
+    "satellite_verification"
+  ],
+  "reject_if_inactive_years": 2
+}
+UI Use:
+Show: “Active Farmer Status”
+Filter: Active / Inactive
+❌ 3. EXCLUSION CRITERIA (CRITICAL – NOT IN PDF)
+"exclusion_criteria": [
+  "income_tax_payer",
+  "government_employee",
+  "professional_doctor_engineer_ca",
+  "pension_above_threshold",
+  "institutional_landholder"
+]
+
+👉 This is mandatory (borrowed from DBT systems like PM-KISAN )
+
+🏦 4. BANK & DBT VALIDATION (ADVANCED)
+"bank_validation": {
+  "aadhaar_linked": true,
+  "npci_status": "active",
+  "account_status": "active",
+  "dbt_enabled": true,
+  "payment_retry": true
+}
+Add UI fields:
+DBT Status
+Payment Status
+Failed Transaction Logs
+👨‍👩‍👧 5. FAMILY EDGE CASE HANDLING
+"family_edge_cases": {
+  "divorce_case": "separate eligibility",
+  "death_case": "benefit transfer to spouse",
+  "migration_case": "reverification required",
+  "joint_family_split": "new eligibility check"
+}
+🔁 6. DUPLICATE DETECTION (ADVANCED)
+"deduplication": {
+  "primary_key": "aadhaar",
+  "secondary_check": ["land_record", "bank_account"],
+  "cross_scheme_check": true,
+  "family_level_dedupe": true
+}
+📍 7. GEO + LAND RECORD INTEGRATION
+"land_verification": {
+  "source": "state_land_records_api",
+  "required_fields": ["survey_number", "7_12"],
+  "geo_validation": true,
+  "dispute_check": true
+}
+💰 8. BENEFIT STRUCTURE (NOT DEFINED IN PDF)
+"benefits": {
+  "amount_per_year": 6000,
+  "installments": 3,
+  "payment_mode": "DBT",
+  "frequency": "4 months"
+}
+
+👉 Matches pattern of similar schemes (PM-KISAN style )
+
+⏳ 9. RE-VERIFICATION TRIGGERS
+"reverification": {
+  "frequency": "yearly",
+  "trigger_events": [
+    "land_change",
+    "bank_change",
+    "aadhaar_update",
+    "family_change"
+  ]
+}
+⚠️ 10. REJECTION CONDITIONS (EXPANDED)
+"rejection_rules": [
+  "aadhaar_not_linked",
+  "bank_inactive",
+  "land_disputed",
+  "duplicate_application",
+  "invalid_documents",
+  "inactive_farmer",
+  "non_agriculture_land_use"
+]
+📊 11. SYSTEM TRACKING FIELDS (VERY IMPORTANT FOR DB)
+"system_fields": {
+  "application_status": ["pending", "approved", "rejected"],
+  "verification_status": ["not_verified", "verified"],
+  "payment_status": ["pending", "success", "failed"],
+  "last_verified_date": "timestamp",
+  "created_at": "timestamp"
+}
+🧾 FINAL CLEAN DB STRUCTURE (MERGED)
+
+👉 You should store like this:
+
+{
+  "scheme_name": "Namo Shetkari Yojana",
+  "state": "Maharashtra",
+  "type": "STATE",
+
+  "existing_pdf_data": { ... },
+
+  "land_criteria": { ... },
+  "farming_activity": { ... },
+  "exclusion_criteria": [ ... ],
+  "bank_validation": { ... },
+  "family_edge_cases": { ... },
+  "deduplication": { ... },
+  "land_verification": { ... },
+  "benefits": { ... },
+  "reverification": { ... },
+  "rejection_rules": [ ... ],
+  "system_fields": { ... }
+}

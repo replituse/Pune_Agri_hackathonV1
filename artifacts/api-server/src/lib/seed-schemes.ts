@@ -226,7 +226,7 @@ const SCHEMES: Scheme[] = [
       reject: ["Non-agricultural land", "Invalid sample"],
     },
     benefits: "Free soil health card with nutrient analysis and crop-specific fertilizer recommendations.",
-    status: "Active",
+    status: "Closed",
     createdAt: now,
     updatedAt: now,
   },
@@ -469,7 +469,7 @@ const SCHEMES: Scheme[] = [
       reject: ["Non-eligible area", "No community / GP approval", "Project not feasible"],
     },
     benefits: "Government-funded water conservation structures (farm ponds, check dams, nala deepening) at village level.",
-    status: "Active",
+    status: "Closed",
     createdAt: now,
     updatedAt: now,
   },
@@ -591,12 +591,19 @@ const SCHEMES: Scheme[] = [
   },
 ];
 
+const INACTIVE_IDS = ["soil-health-card", "jalyukt-shivar"];
+
 export async function seedSchemes(db: Db): Promise<void> {
   try {
     const collection = db.collection("schemes");
     const count = await collection.countDocuments();
     if (count > 0) {
-      logger.info({ count }, "Schemes already seeded, skipping");
+      logger.info({ count }, "Schemes already seeded, applying status patches");
+      const updated = await collection.updateMany(
+        { id: { $in: INACTIVE_IDS } },
+        { $set: { status: "Closed", updatedAt: new Date().toISOString() } }
+      );
+      logger.info({ modified: updated.modifiedCount }, "Status patches applied");
       return;
     }
     await collection.createIndex({ id: 1 }, { unique: true });
