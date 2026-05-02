@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Search, LayoutGrid, LayoutList, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from "lucide-react";
 
 interface EligibilityParam {
@@ -81,17 +81,23 @@ function CategoryBadge({ category, compact }: { category: string; compact?: bool
 }
 
 function SchemeDetailModal({ scheme, onClose }: { scheme: Scheme; onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose}>
     <div
-      className="fixed top-0 right-0 h-full w-1/2 bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
+      ref={panelRef}
+      className="fixed top-0 right-0 z-50 h-full w-1/2 bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
       style={{ minWidth: 480 }}
-      onClick={(e) => e.stopPropagation()}
     >
       {/* ── Header ───────────────────────────────────────── */}
       <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-muted/20 flex-shrink-0">
@@ -221,16 +227,52 @@ function SchemeDetailModal({ scheme, onClose }: { scheme: Scheme; onClose: () =>
 
       </div>
     </div>
+  );
+}
+
+function StatusToggle({ schemeId, status, onToggle }: { schemeId: string; status: "Active" | "Closed"; onToggle: (id: string, next: "Active" | "Closed") => void }) {
+  const [loading, setLoading] = useState(false);
+  const isActive = status === "Active";
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next: "Active" | "Closed" = isActive ? "Closed" : "Active";
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/schemes/${schemeId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (res.ok) onToggle(schemeId, next);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        title={`Click to mark as ${isActive ? "Inactive" : "Active"}`}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${isActive ? "bg-success" : "bg-destructive/80"}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ${isActive ? "translate-x-4" : "translate-x-0.5"}`} />
+      </button>
+      <span className={`text-[10px] font-semibold leading-none ${isActive ? "text-success" : "text-destructive"}`}>
+        {isActive ? "Active" : "Inactive"}
+      </span>
     </div>
   );
 }
 
-function TableRow({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
+function TableRow({ scheme, onView, onStatusChange }: { scheme: Scheme; onView: () => void; onStatusChange: (id: string, status: "Active" | "Closed") => void }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <>
       <tr className="border-t border-border/50 hover:bg-success/10 transition-colors cursor-pointer">
-        <td className="px-4 py-3 w-[32%]">
+        <td className="px-4 py-3 w-[30%]">
           <button onClick={onView} className="font-medium text-sm text-left hover:text-primary transition-colors leading-snug">{scheme.name}</button>
         </td>
         <td className="px-4 py-3 w-[10%] align-middle">
@@ -239,17 +281,17 @@ function TableRow({ scheme, onView }: { scheme: Scheme; onView: () => void }) {
         <td className="px-4 py-3 w-[14%] align-middle">
           <CategoryBadge category={scheme.category} compact />
         </td>
-        <td className="px-4 py-3 w-[28%]">
+        <td className="px-4 py-3 w-[26%]">
           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{scheme.eligibility.summary}</p>
         </td>
-        <td className="px-4 py-3 w-[8%] align-middle">
-          <StatusText status={scheme.status} />
+        <td className="px-4 py-3 w-[9%] align-middle">
+          <StatusToggle schemeId={scheme.id} status={scheme.status} onToggle={onStatusChange} />
         </td>
-        <td className="px-4 py-3 w-[8%] align-middle">
+        <td className="px-4 py-3 w-[11%] align-middle">
           <div className="flex gap-1.5 items-center">
             <button onClick={onView} className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:opacity-80 transition-opacity whitespace-nowrap">Details</button>
             <button
-              onClick={() => setExpanded(e => !e)}
+              onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
               className="p-1 rounded bg-muted hover:bg-muted/80 transition-colors flex-shrink-0"
               title="Toggle eligibility"
             >
@@ -317,6 +359,11 @@ export default function AllSchemes() {
   const [typeFilter, setTypeFilter] = useState<"ALL" | "CENTRAL" | "STATE">("ALL");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Scheme | null>(null);
+
+  const handleStatusChange = useCallback((id: string, status: "Active" | "Closed") => {
+    setSchemes((prev) => prev.map((s) => s.id === id ? { ...s, status } : s));
+    setSelected((prev) => prev?.id === id ? { ...prev, status } : prev);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -446,7 +493,7 @@ export default function AllSchemes() {
               </thead>
               <tbody>
                 {pageData.map((s) => (
-                  <TableRow key={s.id} scheme={s} onView={() => setSelected(s)} />
+                  <TableRow key={s.id} scheme={s} onView={() => setSelected(s)} onStatusChange={handleStatusChange} />
                 ))}
               </tbody>
             </table>

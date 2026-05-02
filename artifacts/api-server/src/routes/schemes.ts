@@ -41,4 +41,28 @@ router.get("/schemes/:id", async (req, res): Promise<void> => {
   }
 });
 
+router.patch("/schemes/:id/status", async (req, res): Promise<void> => {
+  try {
+    const db = getDb();
+    const { status } = req.body as { status?: string };
+    if (status !== "Active" && status !== "Closed") {
+      res.status(400).json({ error: "status must be 'Active' or 'Closed'" });
+      return;
+    }
+    const result = await db.collection("schemes").findOneAndUpdate(
+      { id: req.params.id },
+      { $set: { status, updatedAt: new Date().toISOString() } },
+      { returnDocument: "after", projection: { _id: 0 } }
+    );
+    if (!result) {
+      res.status(404).json({ error: "Scheme not found" });
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "Failed to update scheme status");
+    res.status(500).json({ error: "Failed to update scheme status" });
+  }
+});
+
 export default router;
