@@ -81,10 +81,17 @@ function CategoryBadge({ category, compact }: { category: string; compact?: bool
 }
 
 function SchemeDetailModal({ scheme, onClose }: { scheme: Scheme; onClose: () => void }) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
     <div
-      className="fixed top-0 right-0 z-50 h-full w-1/2 bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
+      className="fixed top-0 right-0 h-full w-1/2 bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
       style={{ minWidth: 480 }}
+      onClick={(e) => e.stopPropagation()}
     >
       {/* ── Header ───────────────────────────────────────── */}
       <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-muted/20 flex-shrink-0">
@@ -213,6 +220,7 @@ function SchemeDetailModal({ scheme, onClose }: { scheme: Scheme; onClose: () =>
         </div>
 
       </div>
+    </div>
     </div>
   );
 }
