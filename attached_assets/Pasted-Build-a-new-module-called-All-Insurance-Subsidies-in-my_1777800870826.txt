@@ -1,0 +1,179 @@
+Build a new module called **"All Insurance & Subsidies"** in my existing AgriAdmin dashboard.
+
+### 1. Sidebar बदलाव
+
+* Add a new menu item:
+
+  * Name: **All Insurance & Subsidies**
+  * Position: Below **Subsidy Management**
+  * Icon: Shield + Currency combination
+
+---
+
+### 2. Module Requirements
+
+Create a full page module similar to "All Schemes" with:
+
+#### Data Scope:
+
+* Include BOTH:
+
+  1. Central Government Schemes
+  2. Maharashtra State Schemes
+
+#### Categories:
+
+* Type:
+
+  * Insurance
+  * Subsidy
+* Region:
+
+  * Central
+  * Maharashtra
+
+---
+
+### 3. Database Design
+
+Create table: `insurance_subsidies`
+
+Columns:
+
+* id (PK)
+* name
+* type (Insurance/Subsidy)
+* region (Central/Maharashtra)
+* eligibility (TEXT)
+* parameters (TEXT)
+* features (TEXT)
+* created_at
+
+---
+
+### 4. Data Population (IMPORTANT)
+
+Insert data from PDF:
+
+CENTRAL INSURANCE:
+
+* PMFBY
+* RWBCIS
+* UPIS
+* CPIS
+
+CENTRAL SUBSIDIES:
+
+* PM-KISAN
+* PMKSY
+* SMAM
+* AIF
+* PM-FME
+* ISS
+
+MAHARASHTRA:
+
+* PMFBY (State)
+* State Crop Insurance Add-ons
+* Namo Shetkari Yojana
+* Saur Krushi Pump
+* Jalyukt Shivar
+* Birsa Munda Scheme
+* Ambedkar Krishi Yojana
+* Micro Irrigation Scheme
+* Farm Mechanization
+* Electricity Subsidy
+
+---
+
+### 5. UI Features
+
+#### A. Toggle View:
+
+* Table View
+* Grid/Card View
+
+#### B. Filters:
+
+* Region Dropdown (Central / Maharashtra)
+* Type Dropdown (Insurance / Subsidy)
+* Search by Scheme Name
+
+#### C. Pagination:
+
+* Show 10 records per page
+
+---
+
+### 6. Table View Columns:
+
+* Scheme Name
+* Type
+* Region
+* Eligibility (short preview + expand)
+* Parameters
+* Features
+* Action (View Details)
+
+---
+
+### 7. Grid View:
+
+* Card layout
+* Show:
+
+  * Name
+  * Type badge
+  * Region badge
+  * Short description
+  * View button
+
+---
+
+### 8. Backend APIs
+
+Create:
+
+* GET /insurance-subsidies
+
+  * Supports:
+
+    * pagination
+    * filter (type, region)
+    * search
+
+* POST /insurance-subsidies (optional admin)
+
+---
+
+### 9. UX Requirements
+
+* Clean dashboard style (same as current UI)
+* Responsive design
+* Highlight:
+
+  * Insurance = green badge
+  * Subsidy = gold badge
+
+---
+
+### 10. Tech Constraints
+
+* Use existing stack (React / Node / Mongo or SQL)
+* Reuse components from:
+
+  * All Schemes
+  * Farmer Registry
+
+---
+
+### 11. Deliverables
+
+* Sidebar updated
+* New page created
+* Database table + seed data
+* API endpoints
+* Pagination working
+* Toggle view working
+
+Make it production-quality UI.

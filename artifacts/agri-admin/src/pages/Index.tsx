@@ -5,6 +5,7 @@ import Dashboard from "@/components/modules/Dashboard";
 import FarmerRegistry from "@/components/modules/FarmerRegistry";
 import SchemeApplications from "@/components/modules/SchemeApplications";
 import AllSchemes from "@/components/modules/AllSchemes";
+import AllInsuranceSubsidies from "@/components/modules/AllInsuranceSubsidies";
 import SubsidyManagement from "@/components/modules/SubsidyManagement";
 import InsuranceClaims from "@/components/modules/InsuranceClaims";
 import GrievanceManagement from "@/components/modules/GrievanceManagement";
@@ -21,6 +22,7 @@ const titles: Record<string, string> = {
   applications: "Scheme Applications",
   allschemes: "All Schemes",
   subsidies: "Subsidy Management",
+  allinsurance: "All Insurance & Subsidies",
   insurance: "Insurance Claims",
   grievances: "Grievance Management",
   reports: "Reports & Analytics",
@@ -35,6 +37,7 @@ const modules: Record<string, React.FC> = {
   applications: SchemeApplications,
   allschemes: AllSchemes,
   subsidies: SubsidyManagement,
+  allinsurance: AllInsuranceSubsidies,
   insurance: InsuranceClaims,
   grievances: GrievanceManagement,
   reports: ReportsAnalytics,

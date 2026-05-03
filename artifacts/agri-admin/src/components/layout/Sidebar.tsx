@@ -1,4 +1,4 @@
-import { BarChart3, Users, ClipboardList, IndianRupee, Shield, Megaphone, TrendingUp, Settings, Wheat, ChevronLeft, ChevronRight, Smartphone, UserPlus, BookOpen } from "lucide-react";
+import { BarChart3, Users, ClipboardList, IndianRupee, Shield, Megaphone, TrendingUp, Settings, Wheat, ChevronLeft, ChevronRight, Smartphone, UserPlus, BookOpen, ShieldCheck } from "lucide-react";
 
 const navItems = [
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -7,6 +7,7 @@ const navItems = [
   { key: "applications", label: "Scheme Applications", icon: ClipboardList },
   { key: "allschemes", label: "All Schemes", icon: BookOpen },
   { key: "subsidies", label: "Subsidy Management", icon: IndianRupee },
+  { key: "allinsurance", label: "All Insurance & Subsidies", icon: ShieldCheck },
   { key: "insurance", label: "Insurance Claims", icon: Shield },
   { key: "grievances", label: "Grievance Management", icon: Megaphone },
   { key: "reports", label: "Reports & Analytics", icon: TrendingUp },

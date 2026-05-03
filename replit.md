@@ -58,6 +58,20 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **New deps**: `mongodb`, `multer`, `@types/multer`
 - **Workflow**: Uses pre-built `dist/index.mjs` directly (no build step on startup) for fast port detection. Run `pnpm run build` in `artifacts/api-server` after code changes, then restart the workflow.
 
+### All Insurance & Subsidies (`artifacts/agri-admin/src/components/modules/AllInsuranceSubsidies.tsx`)
+- **Type**: Full-page module (frontend + backend)
+- **Sidebar**: Below Subsidy Management, key: `allinsurance`, icon: ShieldCheck
+- **Data**: 20 schemes seeded in MongoDB `insurance_subsidies` collection
+  - 4 Central Insurance: PMFBY, RWBCIS, UPIS, CPIS
+  - 6 Central Subsidies: PM-KISAN, PMKSY, SMAM, AIF, PM-FME, ISS
+  - 2 Maharashtra Insurance: PMFBY State, State Crop Insurance Add-ons
+  - 8 Maharashtra Subsidies: Namo Shetkari, Saur Krushi Pump, Jalyukt Shivar, Birsa Munda, Ambedkar Krishi, Micro Irrigation, Farm Mechanization, Electricity Subsidy
+- **API Routes**:
+  - `GET /api/insurance-subsidies` — paginated list; supports `page`, `limit`, `type` (Insurance/Subsidy), `region` (Central/Maharashtra), `search`
+  - `GET /api/insurance-subsidies/:id` — single record
+- **UI Features**: Table/Grid toggle, Region filter, Type filter, Search with debounce, 10/page pagination, detail side panel
+- **Badges**: Insurance = green (success), Subsidy = gold (secondary), Central = primary blue, Maharashtra = orange
+
 ## Port Routing
 - **Port 5000**: Vite dev server (agri-admin frontend) — webview workflow
 - **Port 8000**: API server (Express) — console workflow
