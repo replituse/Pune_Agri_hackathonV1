@@ -7,6 +7,7 @@ interface InsuranceSubsidy {
   type: "Insurance" | "Subsidy";
   region: "Central" | "Maharashtra";
   eligibility: string;
+  criteria: string;
   parameters: string;
   features: string;
   createdAt: string;
@@ -102,6 +103,15 @@ function DetailPanel({
           </p>
           <p className="text-xs leading-relaxed text-foreground bg-muted/20 rounded-lg px-3 py-2.5">
             {item.eligibility}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+            Criteria
+          </p>
+          <p className="text-xs leading-relaxed text-foreground bg-card border border-border rounded-lg px-3 py-2.5">
+            {item.criteria}
           </p>
         </div>
 
