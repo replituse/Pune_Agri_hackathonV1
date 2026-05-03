@@ -26,7 +26,7 @@ function TypeBadge({ type }: { type: "Insurance" | "Subsidy" }) {
   const isInsurance = type === "Insurance";
   return (
     <span
-      className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
+      className={`inline-flex items-center justify-center whitespace-nowrap gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold ${
         isInsurance
           ? "bg-success/15 text-success"
           : "bg-secondary/15 text-secondary"
@@ -41,7 +41,7 @@ function RegionBadge({ region }: { region: "Central" | "Maharashtra" }) {
   const isCentral = region === "Central";
   return (
     <span
-      className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
+      className={`inline-flex items-center justify-center whitespace-nowrap gap-1 text-xs px-2.5 py-0.5 rounded-full font-medium ${
         isCentral
           ? "bg-primary/10 text-primary"
           : "bg-orange-100 text-orange-700"
@@ -152,10 +152,14 @@ function TableRow({
         </button>
       </td>
       <td className="px-4 py-3 w-[11%] align-middle">
-        <TypeBadge type={item.type} />
+        <div className="flex justify-center">
+          <TypeBadge type={item.type} />
+        </div>
       </td>
       <td className="px-4 py-3 w-[12%] align-middle">
-        <RegionBadge region={item.region} />
+        <div className="flex justify-center">
+          <RegionBadge region={item.region} />
+        </div>
       </td>
       <td className="px-4 py-3 w-[22%]">
         <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
@@ -189,7 +193,7 @@ function GridCard({
   return (
     <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-heading text-sm leading-snug flex-1">{item.name}</h3>
+        <h3 className="font-heading text-sm leading-snug flex-1 line-clamp-2">{item.name}</h3>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <TypeBadge type={item.type} />
