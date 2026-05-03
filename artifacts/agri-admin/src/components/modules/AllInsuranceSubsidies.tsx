@@ -80,7 +80,7 @@ function DetailPanel({
     >
       <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-muted/20 flex-shrink-0">
         <div className="flex-1 pr-3">
-          <h2 className="font-heading text-base font-semibold leading-snug mb-2">
+          <h2 className="font-heading text-base font-semibold leading-snug mb-2 whitespace-nowrap overflow-hidden text-ellipsis">
             {item.name}
           </h2>
           <div className="flex flex-wrap gap-2">
