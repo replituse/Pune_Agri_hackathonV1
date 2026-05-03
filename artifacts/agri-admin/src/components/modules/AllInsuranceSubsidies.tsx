@@ -203,7 +203,7 @@ function GridCard({
   return (
     <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-heading text-sm leading-snug flex-1 line-clamp-2">{item.name}</h3>
+        <h3 className="font-heading text-sm leading-snug flex-1 whitespace-nowrap overflow-hidden text-ellipsis">{item.name}</h3>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <TypeBadge type={item.type} />
