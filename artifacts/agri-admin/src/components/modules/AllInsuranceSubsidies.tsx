@@ -108,15 +108,6 @@ function DetailPanel({
 
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
-            Criteria
-          </p>
-          <p className="text-xs leading-relaxed text-foreground bg-card border border-border rounded-lg px-3 py-2.5">
-            {item.criteria}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
             Parameters
           </p>
           <p className="text-xs leading-relaxed text-foreground bg-secondary/10 border border-secondary/20 rounded-lg px-3 py-2.5">
